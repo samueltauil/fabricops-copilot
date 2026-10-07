@@ -45,7 +45,7 @@ Tests:
 
 ## Screenshots (live Fabric sandbox, IDs hashed)
 
-Operate: job status from the Job Scheduler APIs:
+Operate: captured output of a live run (Job Scheduler APIs):
 
 ![live operate](docs/images/09-live-operate.png)
 
@@ -53,7 +53,7 @@ Govern: desired vs. actual, zero drift:
 
 ![live govern](docs/images/07-live-govern.png)
 
-Accelerate: RTI items plus Synthea data in the dev Lakehouse:
+Accelerate: captured output of a live rerun (RTI items plus Synthea data in the dev Lakehouse):
 
 ![live accelerate](docs/images/08-live-accelerate.png)
 
