@@ -43,6 +43,20 @@ Tests:
 
 ![tests](docs/images/06-tests.png)
 
+## Screenshots (live Fabric sandbox, IDs hashed)
+
+Operate: job status from the Job Scheduler APIs:
+
+![live operate](docs/images/09-live-operate.png)
+
+Govern: desired vs. actual, zero drift:
+
+![live govern](docs/images/07-live-govern.png)
+
+Accelerate: RTI items plus Synthea data in the dev Lakehouse:
+
+![live accelerate](docs/images/08-live-accelerate.png)
+
 ## Quick start (mock mode, no tenant needed)
 
 ```powershell
@@ -60,7 +74,8 @@ python -m fabricops.cli tui --config config/examples/synthetic-healthcare/projec
 
 1. `pip install -e ".[live]"` and sign in with `az login` (or use GitHub OIDC).
 2. Copy `config/examples/synthetic-healthcare/live.env.example` to `live.local.env` (git-ignored) and fill in your tenant, app, capacity and group IDs.
-3. Run `preflight`, then `provision-live` and `deploy-live`. Both preview by default; mutation needs `--apply` **and** `FABRICOPS_ALLOW_LIVE_MUTATION=1`.
+3. Run `preflight`, then `provision-live`, `deploy-live`, `accelerate-live`, `operate-live` and `govern-live`. All preview or read only by default; mutation needs `--apply` (or `--run` for jobs) **and** `FABRICOPS_ALLOW_LIVE_MUTATION=1`.
+4. GitHub Actions: workflows run on `workflow_dispatch` with OIDC. Set `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and the `FABRIC_*` repo variables; prod needs environment approval. The tenant must allow service principals to call Fabric APIs.
 
 Never commit tenant, subscription, group or capacity IDs. `.gitignore` excludes `*.local.env`, `.env*`, `artifacts/` and `.fabricops/`.
 
@@ -74,4 +89,4 @@ Never commit tenant, subscription, group or capacity IDs. `.gitignore` excludes 
 
 ## Status
 
-Live and verified: Provision and Deploy. Mock-only so far: Operate, Govern, Accelerate.
+All five pillars run in mock mode and live against a Fabric sandbox. Fabric IQ, ontology and agent templates remain capability probes (preview APIs). The GitHub Actions workflows are untested end to end.

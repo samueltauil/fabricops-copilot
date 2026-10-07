@@ -17,7 +17,15 @@ from fabricops.live import (
     default_token_provider,
     discover_configured_workspaces,
 )
+from fabricops.live_accelerate import OneLakeFiles, accelerate_live, storage_token_provider
 from fabricops.live_deploy import DeploymentError, deploy_live
+from fabricops.live_govern import (
+    govern_live,
+    inject_demo_drift,
+    render_markdown,
+    revert_demo_drift,
+)
+from fabricops.live_operate import OperateError, operate_live, write_operate_report
 from fabricops.live_provision import provision_live, resolve_references
 from fabricops.preflight import live_preflight
 from fabricops.reports import write_evidence
@@ -58,6 +66,32 @@ def build_parser() -> argparse.ArgumentParser:
     deploy_live_parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     deploy_live_parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     deploy_live_parser.add_argument("--apply", action="store_true")
+
+    accelerate_parser = subparsers.add_parser(
+        "accelerate-live", help="Preview or apply live RTI items and Synthea data load"
+    )
+    accelerate_parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    accelerate_parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    accelerate_parser.add_argument("--apply", action="store_true")
+    accelerate_parser.add_argument("--data-dir", type=Path, default=Path(".fabricops/synthea"))
+    accelerate_parser.add_argument("--tools-dir", type=Path, default=Path(".fabricops/tools"))
+
+    operate = subparsers.add_parser(
+        "operate-live", help="Read live job health; optionally run or safely retry jobs"
+    )
+    operate.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    operate.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    operate.add_argument("--run", action="store_true", help="Trigger on-demand jobs")
+    operate.add_argument("--retry", action="store_true", help="Retry policy-eligible failed jobs")
+
+    govern_parser = subparsers.add_parser(
+        "govern-live", help="Read-only live drift report (desired vs actual)"
+    )
+    govern_parser.add_argument("mode", nargs="?", choices=("live",), default="live")
+    govern_parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    govern_parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    govern_parser.add_argument("--inject-demo-drift", action="store_true")
+    govern_parser.add_argument("--revert-demo-drift", action="store_true")
 
     plan = subparsers.add_parser("plan", help="Create a desired-state change plan")
     _common(plan)
@@ -156,6 +190,60 @@ def main(argv: list[str] | None = None) -> int:
             path = _write_report(args.output, "live-deploy", report)
             print(json.dumps({"report": str(path), **report}))
             return 0
+        if args.command == "govern-live":
+            if not live_preflight()["readyForLiveDiscovery"]:
+                raise LiveConfigurationError("Run fabricops preflight; prerequisites are missing")
+            config = load_configuration(args.config)
+            client = FabricRestClient(default_token_provider)
+            actions = []
+            if args.inject_demo_drift:
+                actions.append(inject_demo_drift(client, config))
+            if args.revert_demo_drift:
+                actions.append(revert_demo_drift(client, config))
+            groups, capacities = resolve_references(config)
+            report = govern_live(client, config, groups, capacities)
+            if actions:
+                report["demoActions"] = actions
+            path = _write_report(args.output, "live-govern", report)
+            path.with_suffix(".md").write_text(render_markdown(report), encoding="utf-8")
+            print(json.dumps({"report": str(path), "status": report["status"],
+                              "driftCount": report["driftCount"],
+                              "severityCounts": report["severityCounts"],
+                              "demoActions": actions}))
+            return 0
+        if args.command == "operate-live":
+            if not live_preflight()["readyForLiveDiscovery"]:
+                raise LiveConfigurationError("Run fabricops preflight; prerequisites are missing")
+            if (args.run or args.retry) and os.getenv("FABRICOPS_ALLOW_LIVE_MUTATION") != "1":
+                raise LiveConfigurationError(
+                    "Running jobs requires FABRICOPS_ALLOW_LIVE_MUTATION=1 and --run/--retry"
+                )
+            config = load_configuration(args.config)
+            report = operate_live(
+                FabricRestClient(default_token_provider), config, args.run, args.retry
+            )
+            paths = write_operate_report(args.output, report)
+            print(json.dumps({"reports": [str(p) for p in paths], "summary": report["summary"]}))
+            return 0
+        if args.command == "accelerate-live":
+            if not live_preflight()["readyForLiveDiscovery"]:
+                raise LiveConfigurationError("Run fabricops preflight; prerequisites are missing")
+            if args.apply and os.getenv("FABRICOPS_ALLOW_LIVE_MUTATION") != "1":
+                raise LiveConfigurationError(
+                    "Live mutation requires FABRICOPS_ALLOW_LIVE_MUTATION=1 and --apply"
+                )
+            config = load_configuration(args.config)
+            report = accelerate_live(
+                FabricRestClient(default_token_provider),
+                OneLakeFiles(storage_token_provider),
+                config,
+                args.data_dir,
+                args.tools_dir,
+                args.apply,
+            )
+            path = _write_report(args.output, "live-accelerate", report)
+            print(json.dumps({"report": str(path), **report}))
+            return 0
         if args.command == "synthea":
             config = load_configuration(args.config)
             report = generate_synthea(
@@ -203,6 +291,7 @@ def main(argv: list[str] | None = None) -> int:
         ConfigurationError,
         FabricApiError,
         DeploymentError,
+        OperateError,
         LiveConfigurationError,
         PlanError,
         SyntheaError,

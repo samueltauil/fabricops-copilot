@@ -14,25 +14,47 @@ class DeploymentError(RuntimeError):
     pass
 
 
-def _notebook_definition(environment: str, dev_markers: list[str]) -> dict[str, Any]:
-    source = [
-        "# Synthetic healthcare operations starter (no patient data)\n",
-        f"ENVIRONMENT = '{environment}'\n",
-        "print(f'Care operations starter running in {ENVIRONMENT}')\n",
-    ]
+STARTER_NOTEBOOK_VERSION = "fabricops-starter-notebook:v2-synthea-delta"
+
+_NOTEBOOK_SOURCE = [
+    "# Synthetic healthcare starter: load Synthea CSVs from Files/synthea into Delta tables\n",
+    "# Requires the lakehouse to be the notebook's default lakehouse.\n",
+    "for table in ['patients', 'encounters', 'observations']:\n",
+    "    path = f'Files/synthea/{table}.csv'\n",
+    "    frame = spark.read.option('header', True).option('inferSchema', True).csv(path)\n",
+    "    frame.write.mode('overwrite').format('delta').saveAsTable(f'synthea_{table}')\n",
+    "    print(f'synthea_{table}: {frame.count()} rows')\n",
+]
+
+
+def build_notebook_definition(
+    environment: str, dev_markers: list[str], lakehouse: dict[str, str] | None = None
+) -> dict[str, Any]:
+    metadata: dict[str, Any] = {
+        "language_info": {"name": "python"},
+        "kernel_info": {"name": "synapse_pyspark"},
+    }
+    if lakehouse:
+        metadata["dependencies"] = {
+            "lakehouse": {
+                "default_lakehouse": lakehouse["lakehouseId"],
+                "default_lakehouse_name": lakehouse["lakehouseName"],
+                "default_lakehouse_workspace_id": lakehouse["workspaceId"],
+            }
+        }
     notebook = {
         "nbformat": 4,
         "nbformat_minor": 5,
         "cells": [
             {
                 "cell_type": "code",
-                "source": source,
+                "source": _NOTEBOOK_SOURCE,
                 "execution_count": None,
                 "outputs": [],
                 "metadata": {},
             }
         ],
-        "metadata": {"language_info": {"name": "python"}},
+        "metadata": metadata,
     }
     text = json.dumps(notebook)
     if environment != "dev" and any(marker in text.lower() for marker in dev_markers):
@@ -75,7 +97,9 @@ def deploy_live(
         for item_type in items:
             name = f"{prefix}_{item_type.lower()}"
             definition = (
-                _notebook_definition(environment, dev_markers) if item_type == "Notebook" else None
+                build_notebook_definition(environment, dev_markers)
+                if item_type == "Notebook"
+                else None
             )
             if (item_type, name.casefold()) in existing:
                 actions.append({"item": name, "type": item_type, "action": "no-op"})

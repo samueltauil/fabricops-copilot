@@ -28,6 +28,7 @@ spec:
   monitoring:
     items:
       - name: ingest-operational-events
+        fabricItem: care_datapipeline
         owner: care-data-platform
         dataProduct: care-operations
         freshnessMinutes: 15

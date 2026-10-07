@@ -23,6 +23,20 @@ The first live adapter is read-only workspace discovery through
 `DefaultAzureCredential`. It emits hashes rather than raw workspace IDs in portable
 reports and sanitizes API failures to status, Fabric error code, and correlation ID.
 
+### GitHub OIDC prerequisites
+
+- The Entra app has federated credentials for `environment:dev`, `environment:test`, and
+  `environment:prod` of this repository. Client and tenant identifiers live in GitHub
+  Actions variables (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `FABRIC_*`), never in files.
+- The `prod` GitHub environment requires a reviewer before any job runs.
+- Live workflows run only on `workflow_dispatch`, preview by default, and mutate only when
+  the `apply` input is true.
+- **Tenant prerequisite (not verified automatically):** a Fabric admin must enable
+  "Service principals can use Fabric APIs" in the Fabric admin portal (tenant settings),
+  scoped to a security group containing the app's service principal, and the principal
+  must be a member of the target capacity/workspaces. No client secret exists to test this
+  from the CLI; confirm via the first `live-preflight` workflow run.
+
 ## Data handling
 
 Logs and portable evidence are allowlisted. They may include operation identifiers,

@@ -1,25 +1,50 @@
-name: Fabric morning health
+name: Fabric operate (live)
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 11 * * 1-5"
+    inputs:
+      environment:
+        type: choice
+        options: [dev, test, prod]
+        required: true
+      apply:
+        description: Apply changes (default is preview only)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
-  health:
+  live:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      FABRIC_TENANT_ID: ${{ vars.FABRIC_TENANT_ID }}
+      FABRIC_CLIENT_ID: ${{ vars.FABRIC_CLIENT_ID }}
+      FABRIC_CAPACITY_NONPROD: ${{ vars.FABRIC_CAPACITY_NONPROD }}
+      FABRIC_CAPACITY_PROD: ${{ vars.FABRIC_CAPACITY_PROD }}
+      FABRIC_REF_FABRIC_PLATFORM_ADMINS: ${{ vars.FABRIC_REF_FABRIC_PLATFORM_ADMINS }}
+      FABRIC_REF_CARE_DATA_ENGINEERS: ${{ vars.FABRIC_REF_CARE_DATA_ENGINEERS }}
+      FABRIC_REF_CARE_OPERATIONS_CONSUMERS: ${{ vars.FABRIC_REF_CARE_OPERATIONS_CONSUMERS }}
+      FABRICOPS_ALLOW_AZURE_CLI: ${{ vars.FABRICOPS_ALLOW_AZURE_CLI }}
+      FABRICOPS_ALLOW_LIVE_MUTATION: ${{ inputs.apply && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m pip install -e .
-      - run: python -m fabricops.cli health --output artifacts/operate
-      - uses: actions/upload-artifact@v4
+      - run: python -m pip install -e ".[live]"
+      - run: python -m fabricops.cli operate-live --output artifacts/operate-live ${{ inputs.apply && '--apply' || '' }}
+      - if: ${{ always() }}
+        uses: actions/upload-artifact@v4
         with:
-          name: fabric-morning-health
-          path: artifacts/operate
-
+          name: operate-live-${{ inputs.environment }}
+          path: artifacts/operate-live

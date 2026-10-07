@@ -90,6 +90,56 @@ class FabricRestClient:
     def list_role_assignments(self, workspace_id: str) -> list[dict[str, Any]]:
         return self._get_all(f"/workspaces/{workspace_id}/roleAssignments", "value")
 
+    def add_principal_role(
+        self, workspace_id: str, principal_id: str, principal_type: str, role: str
+    ) -> None:
+        self._request(
+            "POST",
+            f"{FABRIC_BASE_URL}/workspaces/{workspace_id}/roleAssignments",
+            {"principal": {"id": principal_id, "type": principal_type}, "role": role},
+        )
+
+    def delete_role_assignment(self, workspace_id: str, role_assignment_id: str) -> None:
+        self._request(
+            "DELETE",
+            f"{FABRIC_BASE_URL}/workspaces/{workspace_id}/roleAssignments/{role_assignment_id}",
+        )
+
+    def get_item_definition(self, workspace_id: str, item_id: str) -> dict[str, Any]:
+        url = f"{FABRIC_BASE_URL}/workspaces/{workspace_id}/items/{item_id}/getDefinition"
+        headers = {"Authorization": f"Bearer {self.token_provider()}", "Content-Type": "application/json"}
+        response = self.transport("POST", url, headers, None)
+        if response.status >= 400:
+            raise FabricApiError(
+                response.status,
+                str(response.body.get("errorCode", "RequestFailed")),
+                _correlation_id(response.headers),
+            )
+        location = {k.lower(): v for k, v in response.headers.items()}.get("location")
+        if response.status == 202 and location:
+            for _ in range(30):
+                time.sleep(min(int(response.headers.get("Retry-After", "2")), 30))
+                state = self._request("GET", location).body.get("status")
+                if state == "Succeeded":
+                    return self._request("GET", location.rstrip("/") + "/result").body
+                if state in {"Failed", "Canceled"}:
+                    raise FabricApiError(500, f"LongRunningOperation{state}")
+            raise FabricApiError(504, "LongRunningOperationTimeout")
+        return response.body
+
+    def list_job_instances(self, workspace_id: str, item_id: str) -> list[dict[str, Any]]:
+        return self._get_all(f"/workspaces/{workspace_id}/items/{item_id}/jobs/instances", "value")
+
+    def run_item_job(self, workspace_id: str, item_id: str, job_type: str) -> str | None:
+        """Start an on-demand job without waiting; returns the new job instance ID if known."""
+        url = (
+            f"{FABRIC_BASE_URL}/workspaces/{workspace_id}/items/{item_id}"
+            f"/jobs/instances?jobType={job_type}"
+        )
+        response = self._request("POST", url, poll=False)
+        location = {k.lower(): v for k, v in response.headers.items()}.get("location", "")
+        return location.rstrip("/").rsplit("/", 1)[-1] or None
+
     def _get_all(self, path: str, value_key: str) -> list[dict[str, Any]]:
         url = f"{FABRIC_BASE_URL}{path}"
         values: list[dict[str, Any]] = []
@@ -103,7 +153,9 @@ class FabricRestClient:
             url = continuation if isinstance(continuation, str) and continuation else ""
         return values
 
-    def _request(self, method: str, url: str, payload: dict[str, Any] | None = None) -> HttpResponse:
+    def _request(
+        self, method: str, url: str, payload: dict[str, Any] | None = None, poll: bool = True
+    ) -> HttpResponse:
         headers = {
             "Authorization": f"Bearer {self.token_provider()}",
             "Content-Type": "application/json",
@@ -118,7 +170,7 @@ class FabricRestClient:
                     continue
                 raise FabricApiError(503, "ConnectionFailed") from None
             if response.status < 400:
-                return self._finish(response)
+                return self._finish(response) if poll else response
             if (response.status == 429 or response.status >= 500) and attempt < self.max_attempts:
                 delay = min(int(response.headers.get("Retry-After", "1")), 30)
                 time.sleep(delay)
