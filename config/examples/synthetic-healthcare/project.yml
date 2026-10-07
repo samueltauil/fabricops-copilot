@@ -1,0 +1,52 @@
+apiVersion: fabricops/v1alpha1
+kind: FabricProject
+metadata:
+  customer: northwind-health-demo
+  project: care-operations
+spec:
+  environments:
+    dev:
+      workspaceName: fab-northwind-care-dev
+      capacityRef: shared-nonprod
+    test:
+      workspaceName: fab-northwind-care-test
+      capacityRef: shared-nonprod
+    prod:
+      workspaceName: fab-northwind-care-prod
+      capacityRef: production
+  access:
+    adminGroupRef: fabric-platform-admins
+    contributorGroupRef: care-data-engineers
+    viewerGroupRef: care-operations-consumers
+  template: healthcare-rti-starter
+  deployment:
+    package: healthcare-operations
+    items:
+      - Lakehouse
+      - Notebook
+      - DataPipeline
+  monitoring:
+    items:
+      - name: ingest-operational-events
+        owner: care-data-platform
+        dataProduct: care-operations
+        freshnessMinutes: 15
+        retryable: true
+        maxAttempts: 2
+      - name: publish-care-unit-metrics
+        owner: care-analytics
+        dataProduct: care-unit-metrics
+        freshnessMinutes: 60
+        retryable: false
+        maxAttempts: 0
+  accelerators:
+    - rti
+    - fabric-iq
+    - ontology
+    - agent
+  synthea:
+    seed: 42
+    population: 25
+    state: Massachusetts
+    city: Boston
+

@@ -1,0 +1,35 @@
+name: Provision Fabric landing zone
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [dev, test, prod]
+        required: true
+      apply:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e .
+      - run: fabricops plan --use-case provision --output artifacts/provision
+      - uses: actions/upload-artifact@v4
+        with:
+          name: provision-plan
+          path: artifacts/provision
+      - if: ${{ inputs.apply }}
+        run: fabricops apply --plan artifacts/provision/provision-plan.json --output artifacts/provision
+
