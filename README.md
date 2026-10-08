@@ -25,10 +25,6 @@ FabricOps Copilot
 
 Everything below was captured from commands run against a real Fabric capacity.
 
-Preflight: credentials and capability checks:
-
-![preflight](docs/images/03-live-preflight.png)
-
 Provision: three workspaces (dev/test/prod) with capacity and Admin/Contributor/Viewer roles; reruns are no-ops:
 
 ![provision](docs/images/01-live-provision.png)
