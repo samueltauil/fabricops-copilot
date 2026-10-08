@@ -60,8 +60,8 @@ Each `*-live` command rewrites its report, and the dashboard picks it up on the 
 
 | Tip | Detail |
 |---|---|
-| Start from a clean slate | Serve a fresh folder (for example `artifacts\demo`) and use `--output artifacts\demo`. Until all five reports exist the page shows a "Waiting for the first reports" checklist, then the panels appear. |
-| Rehearsed or fresh | Serving `artifacts\real` shows the last full run immediately, and panels change as you rerun commands. |
+| Start from a clean slate | Serve a fresh folder (for example `artifacts\demo`) and use `--output artifacts\demo`. Until all five reports exist the page shows a "Waiting for the first reports" checklist, then the dashboard fills in. |
+| Rehearsed or fresh | Serving `artifacts\real` shows the last full run immediately, and the numbers and rows change as you rerun commands. |
 | Options | `--port 9000` changes the port; `--interval 1` polls every second. |
 | Safety | The server binds to `127.0.0.1` only and serves the same sanitized, hashed reports. No Fabric or Azure call is made by the dashboard. |
 | Stop | `Ctrl+C` in Terminal A. |
@@ -188,7 +188,9 @@ python scripts\build_dashboard.py artifacts\real
 ```
 
 Open `docs/images/dashboard.png`. Every number comes from the JSON reports in
-`artifacts/real`. Walk the audience through the five pillars left to right, then open the
+`artifacts/real`. Start with the headline and the summary ring, walk the five pillar tiles
+(Provision, Deploy, Operate, Govern, Accelerate) from left to right, then use the
+desired-and-actual-state table to show dev, test and prod side by side. Finish in the
 Fabric portal to show the same items exist for real.
 
 ## Step 8 (optional): GitHub Actions and Copilot

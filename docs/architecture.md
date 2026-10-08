@@ -37,6 +37,9 @@ project.yml  ->  config loader  ->  desired resources
 | `tui.py` | Guided terminal UI, a thin client of the same services. |
 | `cli.py` | The headless contract (`fabricops <command>`). |
 
+The dashboard (`scripts/build_dashboard.py`) sits outside the package. It only reads the
+sanitized JSON reports, so it never talks to Fabric or Azure.
+
 ## Key design rules
 
 1. **Idempotent by key.** Resources are identified by a logical key (customer, project,
