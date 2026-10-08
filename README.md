@@ -21,29 +21,21 @@ FabricOps Copilot
 - **Least privilege, customer-owned credentials**: OIDC / `az login`, no secrets in the repo.
 - **Audit without sensitive data**: allowlisted evidence, hashed IDs, row counts only.
 
-## Screenshots (mock mode)
+## Live demo (real Fabric tenant, IDs shown only as hashes)
 
-Preview before change:
+Everything below was captured from commands run against a real Fabric capacity.
 
-![plan preview](docs/images/01-plan-preview.png)
+Preflight: credentials and capability checks:
 
-Idempotent reruns across all five pillars:
+![preflight](docs/images/03-live-preflight.png)
 
-![idempotent demo](docs/images/02-idempotent-demo.png)
+Provision: three workspaces (dev/test/prod) with capacity and Admin/Contributor/Viewer roles; reruns are no-ops:
 
-Optional administrator TUI (health and drift):
+![provision](docs/images/01-live-provision.png)
 
-![admin tui](docs/images/03-admin-tui.png)
+Deploy: Lakehouse, Notebook and DataPipeline promoted to every environment:
 
-Synthea synthetic dataset (aggregate counts and hash only):
-
-![synthea](docs/images/04-synthea-dataset.png)
-
-Tests:
-
-![tests](docs/images/06-tests.png)
-
-## Screenshots (live Fabric sandbox, IDs hashed)
+![deploy](docs/images/02-live-deploy.png)
 
 Operate: captured output of a live run (Job Scheduler APIs):
 
@@ -57,28 +49,23 @@ Accelerate: captured output of a live rerun (RTI items plus Synthea data in the 
 
 ![live accelerate](docs/images/08-live-accelerate.png)
 
-## Quick start (mock mode, no tenant needed)
+Synthea synthetic dataset (aggregate counts only):
+
+![synthea](docs/images/04-synthea-dataset.png)
+
+## Quick start (your own Fabric tenant)
 
 ```powershell
 python -m venv .venv; .\.venv\Scripts\Activate.ps1
-pip install -e ".[dev]"
-python -m fabricops.cli capabilities
-python -m fabricops.cli plan --config config/examples/synthetic-healthcare/project.yml --use-case all
-python -m fabricops.cli demo --config config/examples/synthetic-healthcare/project.yml
-python -m fabricops.cli tui --config config/examples/synthetic-healthcare/project.yml
+pip install -e ".[live]"
+az login
 ```
 
-`demo` runs Synthea first (needs Java 11+; use `--skip-synthea` to opt out), then each use case twice to prove idempotency.
+1. Copy `config/examples/synthetic-healthcare/live.env.example` to `live.local.env` (git-ignored) and fill in your tenant, app, capacity and group IDs.
+2. Run `fabricops preflight`, then `provision-live`, `deploy-live`, `accelerate-live`, `operate-live` and `govern-live`. All preview or read only by default; mutation needs `--apply` (or `--run` for jobs) **and** `FABRICOPS_ALLOW_LIVE_MUTATION=1`.
+3. GitHub Actions: workflows run on `workflow_dispatch` with OIDC. Set `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and the `FABRIC_*` repo variables; prod needs environment approval. The tenant must allow service principals to call Fabric APIs.
 
-## Live mode (your own Fabric tenant)
-
-1. `pip install -e ".[live]"` and sign in with `az login` (or use GitHub OIDC).
-2. Copy `config/examples/synthetic-healthcare/live.env.example` to `live.local.env` (git-ignored) and fill in your tenant, app, capacity and group IDs.
-3. Run `preflight`, then `provision-live`, `deploy-live`, `accelerate-live`, `operate-live` and `govern-live`. All preview or read only by default; mutation needs `--apply` (or `--run` for jobs) **and** `FABRICOPS_ALLOW_LIVE_MUTATION=1`.
-4. GitHub Actions: workflows run on `workflow_dispatch` with OIDC. Set `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and the `FABRIC_*` repo variables; prod needs environment approval. The tenant must allow service principals to call Fabric APIs.
-
-Never commit tenant, subscription, group or capacity IDs. `.gitignore` excludes `*.local.env`, `.env*`, `artifacts/` and `.fabricops/`.
-
+Synthea needs Java 11+. Never commit tenant, subscription, group or capacity IDs; `.gitignore` excludes `*.local.env`, `.env*`, `artifacts/` and `.fabricops/`.
 ## Fabric MCP
 
 `.vscode/mcp.json` and `.mcp.json` register the [Fabric MCP server](docs/fabric-mcp.md), used by Copilot for API docs and item-definition contracts.
@@ -89,4 +76,4 @@ Never commit tenant, subscription, group or capacity IDs. `.gitignore` excludes 
 
 ## Status
 
-All five pillars run in mock mode and live against a Fabric sandbox. Fabric IQ, ontology and agent templates remain capability probes (preview APIs). The GitHub Actions workflows are untested end to end.
+All five pillars run live against a Fabric sandbox. Fabric IQ, ontology and agent templates remain capability probes (preview APIs). The GitHub Actions workflows are untested end to end.
