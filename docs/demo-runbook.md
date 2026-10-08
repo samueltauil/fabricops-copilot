@@ -47,8 +47,8 @@ $cfg = "config\examples\synthetic-healthcare\project.yml"
 ## Optional: run the dashboard live during the demo
 
 The dashboard can run as a tiny local web server that re-reads the JSON reports every
-2 seconds and updates in place (a pulsing **Live** chip appears in the top bar, and panels
-flash when data changes). Open it on a second monitor or a second browser window.
+2 seconds and updates in place (a "Live" indicator appears in the top bar, and any row whose
+data changed is briefly highlighted). Open it on a second monitor or a second browser window.
 
 ```powershell
 # Terminal A (leave running): serve the dashboard on http://127.0.0.1:8765
