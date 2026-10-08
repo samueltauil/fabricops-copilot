@@ -44,6 +44,28 @@ $cfg = "config\examples\synthetic-healthcare\project.yml"
 > (or `--run` for jobs) **and** set `FABRICOPS_ALLOW_LIVE_MUTATION=1`. Forgetting either is
 > safe: you get a preview.
 
+## Optional: run the dashboard live during the demo
+
+The dashboard can run as a tiny local web server that re-reads the JSON reports every
+2 seconds and updates in place (a pulsing **Live** chip appears in the top bar, and panels
+flash when data changes). Open it on a second monitor or a second browser window.
+
+```powershell
+# Terminal A (leave running): serve the dashboard on http://127.0.0.1:8765
+python scripts\build_dashboard.py artifacts\real --serve
+```
+
+Then run the demo steps below in a second terminal, always with `--output artifacts\real`.
+Each `*-live` command rewrites its report, and the dashboard picks it up on the next poll.
+
+| Tip | Detail |
+|---|---|
+| Start from a clean slate | Serve a fresh folder (for example `artifacts\demo`) and use `--output artifacts\demo`. Until all five reports exist the page shows a "Waiting for the first reports" checklist, then the panels appear. |
+| Rehearsed or fresh | Serving `artifacts\real` shows the last full run immediately, and panels change as you rerun commands. |
+| Options | `--port 9000` changes the port; `--interval 1` polls every second. |
+| Safety | The server binds to `127.0.0.1` only and serves the same sanitized, hashed reports. No Fabric or Azure call is made by the dashboard. |
+| Stop | `Ctrl+C` in Terminal A. |
+
 ## Step 0: Understand the configuration
 
 Open `config/examples/synthetic-healthcare/project.yml`. It is the whole demo:
@@ -157,6 +179,9 @@ extra assignment and `--revert-demo-drift` removes it, so you can show a finding
 and clear. (Only tested against a test double; rehearse it first.)
 
 ## Step 7: Show the evidence
+
+If you are running the live dashboard (see above), it already shows everything. Otherwise
+render the static PNG:
 
 ```powershell
 python scripts\build_dashboard.py artifacts\real

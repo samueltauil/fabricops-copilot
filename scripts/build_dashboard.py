@@ -1,21 +1,35 @@
 """Build a dashboard from the live FabricOps reports and screenshot it.
 
 Reads the sanitized JSON reports written by the *-live commands (hashed IDs only),
-renders a static HTML console view, and captures a PNG with a headless browser.
+renders an HTML console view, and either captures a PNG with a headless browser
+(default) or serves it live with --serve so it updates while the demo runs.
+
+    python scripts/build_dashboard.py artifacts/real            # write docs/images/dashboard.png
+    python scripts/build_dashboard.py artifacts/real --serve    # http://127.0.0.1:8765
 """
 
 from __future__ import annotations
 
+import argparse
 import html
 import json
-import sys
 from datetime import datetime, timezone
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from playwright.sync_api import sync_playwright
+_ap = argparse.ArgumentParser()
+_ap.add_argument("reports", nargs="?", default="artifacts/real")
+_ap.add_argument("--serve", action="store_true", help="serve a live, auto-refreshing dashboard")
+_ap.add_argument("--port", type=int, default=8765)
+_ap.add_argument("--interval", type=int, default=2, help="browser refresh interval in seconds")
+ARGS = _ap.parse_args()
 
-REPORTS = Path(sys.argv[1] if len(sys.argv) > 1 else "artifacts/real")
+REPORTS = Path(ARGS.reports)
 OUT = Path("docs/images")
+REPORT_FILES = [
+    "live-provision.json", "live-deploy.json", "live-operate.json",
+    "live-govern.json", "live-accelerate.json",
+]
 
 CSS = """
 :root{
@@ -96,6 +110,27 @@ LOGO = (
     '<svg width="24" height="24" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#0b6e5f"/>'
     '<path d="M7 7h10M7 12h7M7 17h4" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>'
 )
+LIVE_CHIP = '<span class="livechip"><i></i>Live</span>'
+LIVE_CSS = """<style>
+body{width:auto;min-width:1200px}
+.livechip{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--ok);font-size:12px}
+.livechip i{width:7px;height:7px;border-radius:50%;background:var(--ok);display:block;animation:pulse 1.6s ease-out infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 #17803d66}100%{box-shadow:0 0 0 8px #17803d00}}
+.flash{animation:flash 1.4s ease-out}
+@keyframes flash{0%{background:#e6f2ef}100%{background:transparent}}
+</style>"""
+LIVE_JS = """<script>
+(async function poll(){
+  try{
+    const r=await fetch('/body',{cache:'no-store'});
+    if(r.ok){const t=await r.text();
+      if(t!==window.__last){const first=window.__last===undefined;window.__last=t;
+        document.body.innerHTML=t;
+        if(!first)document.querySelectorAll('.panel').forEach(p=>p.classList.add('flash'));}}
+  }catch(e){}
+  setTimeout(poll,__INTERVAL__);
+})();
+</script>"""
 
 
 def load(name: str) -> dict:
@@ -125,10 +160,32 @@ def duration(job: dict) -> str:
     return f"{secs:.0f} s"
 
 
-def build() -> str:
+def latest_report_time() -> datetime:
+    stamps = [(REPORTS / n).stat().st_mtime for n in REPORT_FILES if (REPORTS / n).exists()]
+    return datetime.fromtimestamp(max(stamps), timezone.utc) if stamps else datetime.now(timezone.utc)
+
+
+def waiting_page(live: bool) -> str:
+    rows = "".join(
+        f'<tr><td class="mono">{n}</td><td class="r">'
+        + (status("Received", "") if (REPORTS / n).exists() else status("Waiting", "idle"))
+        + "</td></tr>"
+        for n in REPORT_FILES
+    )
+    return f"""<html><head><meta charset="utf-8"><style>{CSS}</style></head><body>
+<div class="bar"><div class="brand">{LOGO}FabricOps Copilot</div><div class="nav"></div>
+<div class="right"><span class="env">Sandbox</span>{LIVE_CHIP if live else ""}</div></div>
+<div class="page"><div class="titlerow"><div><h1>Waiting for the first reports</h1>
+<div class="sub">Run the demo commands with <code>--output {esc(REPORTS)}</code>. Panels appear when all five reports exist.</div></div></div>
+<div class="panel"><table><tr><th>Report</th><th class="r">State</th></tr>{rows}</table></div></div></body></html>"""
+
+
+def build(live: bool = False) -> str:
+    if not all((REPORTS / n).exists() for n in REPORT_FILES):
+        return waiting_page(live)
     prov, dep = load("live-provision.json"), load("live-deploy.json")
     op, gov, acc = load("live-operate.json"), load("live-govern.json"), load("live-accelerate.json")
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    now = latest_report_time().strftime("%Y-%m-%d %H:%M:%S UTC")
     items = sum(len(e["actions"]) for e in dep["environments"])
     rows_total = sum(acc["dataset"]["tableRowCounts"].values())
     gov_by_env = {e["environment"]: e for e in gov["environments"]}
@@ -205,7 +262,7 @@ def build() -> str:
     )
     return f"""<html><head><meta charset="utf-8"><style>{CSS}</style></head><body>
 <div class="bar"><div class="brand">{LOGO}FabricOps Copilot</div><div class="nav">{nav}</div>
-<div class="right"><span class="env">Sandbox</span><span>Last reconciled {now}</span></div></div>
+<div class="right"><span class="env">Sandbox</span>{LIVE_CHIP if live else ""}<span>Last reconciled {now}</span></div></div>
 <div class="page">
 <div class="crumb">Northwind Health &nbsp;/&nbsp; care-operations</div>
 <div class="titlerow"><div><h1>Environment overview</h1>
@@ -241,9 +298,12 @@ def build() -> str:
 </div></body></html>"""
 
 
-def main() -> None:
+def screenshot() -> None:
+    from playwright.sync_api import sync_playwright
+
     OUT.mkdir(parents=True, exist_ok=True)
     page_html = build()
+    Path("artifacts").mkdir(exist_ok=True)
     Path("artifacts/dashboard.html").write_text(page_html, encoding="utf-8")
     with sync_playwright() as pw:
         browser = pw.chromium.launch(channel="msedge")
@@ -251,6 +311,48 @@ def main() -> None:
         page.set_content(page_html)
         page.screenshot(path=str(OUT / "dashboard.png"), full_page=True)
         browser.close()
+
+
+def live_shell(page_html: str) -> str:
+    js = LIVE_JS.replace("__INTERVAL__", str(ARGS.interval * 1000))
+    return page_html.replace("</head>", LIVE_CSS + "</head>", 1).replace("</body>", js + "</body>", 1)
+
+
+class Handler(BaseHTTPRequestHandler):
+    def _send(self, body: str, code: int = 200) -> None:
+        data = body.encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def do_GET(self) -> None:  # noqa: N802
+        if self.path == "/body":
+            page_html = build(live=True)
+            inner = page_html.split("<body>", 1)[1].rsplit("</body>", 1)[0]
+            self._send(inner)
+        elif self.path in ("/", "/index.html"):
+            self._send(live_shell(build(live=True)))
+        else:
+            self._send("not found", 404)
+
+    def log_message(self, *_: object) -> None:
+        pass
+
+
+def serve() -> None:
+    server = ThreadingHTTPServer(("127.0.0.1", ARGS.port), Handler)
+    print(f"Live dashboard on http://127.0.0.1:{ARGS.port}  (reading {REPORTS}, refresh {ARGS.interval}s). Ctrl+C to stop.")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+
+
+def main() -> None:
+    serve() if ARGS.serve else screenshot()
 
 
 if __name__ == "__main__":
