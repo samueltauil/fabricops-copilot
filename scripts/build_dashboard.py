@@ -1,8 +1,8 @@
-"""Build a dashboard from the live FabricOps reports and screenshot it.
+"""Build the FabricOps run ledger from the live reports.
 
-Reads the sanitized JSON reports written by the *-live commands (hashed IDs only),
-renders an HTML console view, and either captures a PNG with a headless browser
-(default) or serves it live with --serve so it updates while the demo runs.
+Reads the sanitized JSON reports written by the *-live commands (hashed IDs only) and
+renders an HTML ledger. By default it captures a PNG with a headless browser; with
+--serve it serves the page locally and refreshes it while the demo runs.
 
     python scripts/build_dashboard.py artifacts/real            # write docs/images/dashboard.png
     python scripts/build_dashboard.py artifacts/real --serve    # http://127.0.0.1:8765
@@ -33,91 +33,69 @@ REPORT_FILES = [
 
 CSS = """
 :root{
-  --bg:#f5f6f8;--panel:#fff;--line:#e3e6ea;--line2:#eef0f3;--ink:#1a1f26;--ink2:#4b5563;--mute:#7b8594;
-  --accent:#0b6e5f;--accent-bg:#e6f2ef;--ok:#17803d;--warn:#b45309;--bad:#b42318;
+  --paper:#f3f0e8;--ink:#1b1d22;--ink2:#4a4d55;--dim:#807b6f;--rule:#d9d4c7;
+  --accent:#b8431a;--ok:#2e6b43;--term:#15181d;
+  --head:'Bahnschrift SemiCondensed','Bahnschrift','Arial Narrow',sans-serif;
+  --serif:Georgia,'Times New Roman',serif;
   --mono:'Cascadia Mono','Consolas',monospace;
+  --body:'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;
 }
 *{box-sizing:border-box}
-body{margin:0;width:1440px;background:var(--bg);color:var(--ink);font:13px/1.45 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;
+body{margin:0;width:1440px;background:var(--paper);color:var(--ink);font:13px/1.45 var(--body);
   -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
-.bar{height:52px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 32px;gap:28px}
-.brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;letter-spacing:-.1px}
-.brand svg{display:block}
-.nav{display:flex;gap:2px;height:100%;margin-left:8px}
-.nav a{display:flex;align-items:center;gap:8px;padding:0 14px;color:var(--ink2);font-size:13px;border-bottom:2px solid transparent;margin-bottom:-1px}
-.nav a.on{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
-.nav i{width:6px;height:6px;border-radius:50%;background:var(--ok);display:block}
-.right{margin-left:auto;display:flex;align-items:center;gap:18px;color:var(--mute);font-size:12px}
-.env{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:4px;padding:3px 9px;color:var(--ink2);font-size:12px;background:#fafbfc}
-.page{padding:24px 32px 28px}
-.crumb{color:var(--mute);font-size:12px;margin-bottom:6px}
-.titlerow{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
-h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.3px}
-.sub{color:var(--ink2);margin-top:3px}
-.status{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ok);font-weight:600}
-.status i{width:8px;height:8px;border-radius:50%;background:var(--ok);display:block;box-shadow:0 0 0 3px #17803d22}
-.kpis{display:grid;grid-template-columns:repeat(5,1fr);background:var(--panel);border:1px solid var(--line);border-radius:6px;margin-bottom:16px}
-.kpi{padding:14px 18px 15px;border-right:1px solid var(--line2)}.kpi:last-child{border:0}
-.kpi .l{color:var(--mute);font-size:12px}
-.kpi .n{font-size:28px;font-weight:600;letter-spacing:-.6px;margin:2px 0 1px;line-height:1.15}
-.kpi .d{color:var(--mute);font-size:12px}
-.cols{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;margin-bottom:16px;align-items:start}
-.stack{display:flex;flex-direction:column;gap:16px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:hidden}
-.ph{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--line)}
-.ph h2{margin:0;font-size:14px;font-weight:600}
-.ph .k{font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-bg);border-radius:3px;padding:1px 6px;letter-spacing:.2px}
-.ph code{margin-left:auto;font:11.5px var(--mono);color:var(--mute)}
+.mast{background:var(--ink);color:#e9e5da;height:40px;display:flex;align-items:center;padding:0 48px;gap:18px;font:12px var(--mono)}
+.mast .wm{font:600 15px var(--head);letter-spacing:.16em;color:#fff}
+.mast .path{color:#9a968a}
+.mast .sp{margin-left:auto;display:flex;gap:22px;align-items:center;color:#b9b5a8}
+.livechip{display:inline-flex;align-items:center;gap:7px;color:#f08a5d;letter-spacing:.08em}
+.livechip i{width:7px;height:7px;border-radius:50%;background:#f08a5d;display:block}
+.page{padding:36px 48px 30px}
+.hero{display:grid;grid-template-columns:minmax(0,1fr) 600px;gap:56px;align-items:end;padding-bottom:30px}
+.eyebrow{font:600 11px var(--head);letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.lede{font:400 31px/1.28 var(--serif);letter-spacing:-.4px;margin:0;color:var(--ink)}
+.lede b{font-weight:700;border-bottom:2px solid var(--accent);padding-bottom:0}
+.lede2{margin-top:14px;color:var(--ink2);font-size:14px;max-width:640px}
+.term{background:var(--term);color:#d8d4c8;border-radius:2px;padding:14px 18px 16px;font:12px/1.9 var(--mono)}
+.term .t{color:#6f7480;margin-bottom:4px}
+.term .r{display:grid;grid-template-columns:150px 1fr auto;gap:14px;white-space:nowrap}
+.term .c{color:#8b909b}.term .g{color:#6fbf8a}.term .a{color:#f08a5d}.term .w{color:#fff}
+.sec{border-top:2px solid var(--ink);padding-top:10px;margin-bottom:34px}
+.sh{display:flex;align-items:baseline;gap:12px;margin-bottom:6px}
+.sh .no{font:600 12px var(--mono);color:var(--accent)}
+.sh h2{margin:0;font:600 15px var(--head);letter-spacing:.1em;text-transform:uppercase}
+.sh code{margin-left:auto;font:11px var(--mono);color:var(--dim)}
+.cols{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(0,1fr);gap:56px;align-items:start}
 table{width:100%;border-collapse:collapse}
-th{white-space:nowrap;font-weight:500;color:var(--mute);font-size:12px;text-align:left;padding:8px 18px;background:#fafbfc;border-bottom:1px solid var(--line)}
-td{white-space:nowrap;padding:10px 18px;border-bottom:1px solid var(--line2);vertical-align:middle}
+th{font:600 10.5px var(--head);letter-spacing:.12em;text-transform:uppercase;color:var(--dim);text-align:left;
+  padding:6px 12px 6px 0;border-bottom:1px solid var(--ink)}
+td{padding:9px 12px 9px 0;border-bottom:1px solid var(--rule);vertical-align:baseline;white-space:nowrap}
 tr:last-child td{border-bottom:0}
-th.r,td.r{text-align:right}td.w{white-space:normal}
-th,td{padding-left:14px;padding-right:14px}th:first-child,td:first-child{padding-left:18px}th:last-child,td:last-child{padding-right:18px}
-.mono{font-family:var(--mono);font-size:12px;color:var(--ink2)}
-.dim{color:var(--mute)}
-.st{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
-.st i{width:8px;height:8px;border-radius:50%;display:block;background:var(--ok)}
-.st.warn i{background:#d97706}.st.idle i{background:#fff;border:1.5px solid #9aa3af}
-.ic{display:inline-flex;align-items:center;gap:9px;font-weight:500}
-.ic svg{flex:none}
-.ck{color:var(--ok);display:inline-block;vertical-align:-2px}
-.note{padding:10px 18px;border-top:1px solid var(--line);background:#fafbfc;color:var(--mute);font-size:12px}
-.flow{display:flex;align-items:center;gap:0;padding:16px 18px 6px}
-.node{border:1px solid var(--line);border-radius:4px;padding:6px 14px;font-weight:600;font-size:12.5px;background:#fff}
-.node.cur{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
-.arrow{flex:none;width:34px;height:1px;background:#b6bdc7;position:relative}
-.arrow:after{content:"";position:absolute;right:0;top:-3px;width:6px;height:6px;border-top:1px solid #b6bdc7;border-right:1px solid #b6bdc7;transform:rotate(45deg)}
-.gate{margin-left:auto;color:var(--mute);font-size:12px;display:flex;align-items:center;gap:6px}
-.hb{display:flex;align-items:center;gap:12px}
-.hb .t{width:92px;color:var(--ink2)}
-.track{display:block;flex:1;height:8px;background:var(--line2);border-radius:2px;overflow:hidden}
-.track i{display:block;height:100%;background:var(--accent);border-radius:2px}
-.hb .v{width:62px;text-align:right}
-.foot{display:flex;justify-content:space-between;color:var(--mute);font-size:12px;padding:2px 2px 0}.cols+.foot{margin-top:16px}
+th.r,td.r{text-align:right;padding-right:0}
+td.w{white-space:normal}
+.nm{font-weight:600;letter-spacing:-.1px}
+.mono{font:11.5px var(--mono);color:var(--ink2)}
+.dim{color:var(--dim)}
+.sub2{display:block;color:var(--dim);font-size:12px;font-weight:400}
+.st{display:inline-flex;align-items:center;gap:7px;font:600 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ok)}
+.st i,.sq{display:inline-block;width:8px;height:8px;background:var(--ok);flex:none}
+.st.idle{color:var(--dim)}.st.idle i{background:none;border:1.5px solid var(--dim)}
+.sq{vertical-align:0}
+.route{display:flex;align-items:center;gap:10px;font:12px var(--mono);margin:8px 0 10px;color:var(--ink2)}
+.route b{color:var(--ink);border:1px solid var(--ink);padding:1px 8px;font-weight:600}
+.route span.gate{margin-left:auto;font-family:var(--serif);font-style:italic;color:var(--dim);font-size:12.5px}
+.margin{margin:10px 0 0;font:italic 12.5px/1.5 var(--serif);color:var(--dim);max-width:560px}
+.bar{display:block;height:4px;background:var(--ink)}
+td.bw{width:42%;padding-right:18px;vertical-align:middle}
+.foot{border-top:1px solid var(--ink);padding-top:9px;display:flex;justify-content:space-between;font:11px var(--mono);color:var(--dim)}
 """
 
-ICONS = {
-    "Lakehouse": ("#0f6cbd", '<path d="M3 8.5 8 4l5 4.5V13H3z" fill="none" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/>'),
-    "Notebook": ("#5b6b7c", '<path d="M5 3.5h6v9H5zM7 6.5h2M7 9h2" fill="none" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>'),
-    "DataPipeline": ("#107c41", '<path d="M3.5 5.5h3v5h-3zM9.5 5.5h3v5h-3zM6.5 8h3" fill="none" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/>'),
-    "Eventhouse": ("#0f6cbd", '<path d="M3 13V8l5-4 5 4v5M6.5 13V9.5h3V13" fill="none" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/>'),
-    "KQLDatabase": ("#3a7bd5", '<ellipse cx="8" cy="5" rx="4" ry="1.7" fill="none" stroke="#fff" stroke-width="1.3"/><path d="M4 5v6c0 .9 1.8 1.7 4 1.7s4-.8 4-1.7V5" fill="none" stroke="#fff" stroke-width="1.3"/>'),
-    "Eventstream": ("#c239b3", '<path d="M2.5 8c1.2-3 2.3-3 3.5 0s2.3 3 3.5 0 2.3-3 4 0" fill="none" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>'),
-}
-CHECK = '<svg class="ck" width="14" height="14" viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-LOGO = (
-    '<svg width="24" height="24" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#0b6e5f"/>'
-    '<path d="M7 7h10M7 12h7M7 17h4" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>'
-)
-LIVE_CHIP = '<span class="livechip"><i></i>Live</span>'
+LIVE_CHIP = '<span class="livechip"><i></i>LIVE</span>'
 LIVE_CSS = """<style>
 body{width:auto;min-width:1200px}
-.livechip{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--ok);font-size:12px}
-.livechip i{width:7px;height:7px;border-radius:50%;background:var(--ok);display:block;animation:pulse 1.6s ease-out infinite}
-@keyframes pulse{0%{box-shadow:0 0 0 0 #17803d66}100%{box-shadow:0 0 0 8px #17803d00}}
-.flash{animation:flash 1.4s ease-out}
-@keyframes flash{0%{background:#e6f2ef}100%{background:transparent}}
+.livechip i{animation:blink 1.6s steps(2,start) infinite}
+@keyframes blink{50%{opacity:.25}}
+.sec.flash{animation:flash 1.6s ease-out}
+@keyframes flash{0%{background:#f0dccf}100%{background:transparent}}
 </style>"""
 LIVE_JS = """<script>
 (async function poll(){
@@ -126,7 +104,7 @@ LIVE_JS = """<script>
     if(r.ok){const t=await r.text();
       if(t!==window.__last){const first=window.__last===undefined;window.__last=t;
         document.body.innerHTML=t;
-        if(!first)document.querySelectorAll('.panel').forEach(p=>p.classList.add('flash'));}}
+        if(!first)document.querySelectorAll('.sec').forEach(p=>p.classList.add('flash'));}}
   }catch(e){}
   setTimeout(poll,__INTERVAL__);
 })();
@@ -139,13 +117,6 @@ def load(name: str) -> dict:
 
 def esc(value: object) -> str:
     return html.escape(str(value))
-
-
-def icon(kind: str) -> str:
-    color, glyph = ICONS[kind]
-    return (
-        f'<svg width="18" height="18" viewBox="0 0 16 16"><rect width="16" height="16" rx="3" fill="{color}"/>{glyph}</svg>'
-    )
 
 
 def status(text: str, kind: str = "") -> str:
@@ -165,19 +136,50 @@ def latest_report_time() -> datetime:
     return datetime.fromtimestamp(max(stamps), timezone.utc) if stamps else datetime.now(timezone.utc)
 
 
+def count_actions(report: dict) -> tuple[int, int]:
+    """Return (unchanged, changed) over every action in a report."""
+    unchanged = changed = 0
+
+    def walk(node: object) -> None:
+        nonlocal unchanged, changed
+        if isinstance(node, dict):
+            if "action" in node:
+                if node["action"] == "no-op" or str(node["action"]).startswith("present"):
+                    unchanged += 1
+                else:
+                    changed += 1
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+
+    walk(report)
+    return unchanged, changed
+
+
+def masthead(live: bool, stamp: str = "") -> str:
+    right = (LIVE_CHIP if live else "") + (f"<span>reconciled {stamp}</span>" if stamp else "")
+    return (
+        '<div class="mast"><span class="wm">FABRICOPS</span>'
+        '<span class="path">northwind-health / care-operations</span>'
+        f'<div class="sp"><span>SANDBOX</span>{right}</div></div>'
+    )
+
+
 def waiting_page(live: bool) -> str:
     rows = "".join(
         f'<tr><td class="mono">{n}</td><td class="r">'
-        + (status("Received", "") if (REPORTS / n).exists() else status("Waiting", "idle"))
+        + (status("Received") if (REPORTS / n).exists() else status("Waiting", "idle"))
         + "</td></tr>"
         for n in REPORT_FILES
     )
     return f"""<html><head><meta charset="utf-8"><style>{CSS}</style></head><body>
-<div class="bar"><div class="brand">{LOGO}FabricOps Copilot</div><div class="nav"></div>
-<div class="right"><span class="env">Sandbox</span>{LIVE_CHIP if live else ""}</div></div>
-<div class="page"><div class="titlerow"><div><h1>Waiting for the first reports</h1>
-<div class="sub">Run the demo commands with <code>--output {esc(REPORTS)}</code>. Panels appear when all five reports exist.</div></div></div>
-<div class="panel"><table><tr><th>Report</th><th class="r">State</th></tr>{rows}</table></div></div></body></html>"""
+{masthead(live)}
+<div class="page"><div class="eyebrow">Run ledger</div>
+<p class="lede">Waiting for the first reports.</p>
+<p class="lede2">Run the demo commands with <code>--output {esc(REPORTS)}</code>. The ledger fills in when all five reports exist.</p>
+<div class="sec" style="margin-top:28px;max-width:560px"><table><tr><th>Report</th><th class="r">State</th></tr>{rows}</table></div></div></body></html>"""
 
 
 def build(live: bool = False) -> str:
@@ -185,116 +187,124 @@ def build(live: bool = False) -> str:
         return waiting_page(live)
     prov, dep = load("live-provision.json"), load("live-deploy.json")
     op, gov, acc = load("live-operate.json"), load("live-govern.json"), load("live-accelerate.json")
-    now = latest_report_time().strftime("%Y-%m-%d %H:%M:%S UTC")
-    items = sum(len(e["actions"]) for e in dep["environments"])
+    stamp = latest_report_time().strftime("%Y-%m-%d %H:%M:%SZ")
+
+    starter = sum(len(e["actions"]) for e in dep["environments"])
+    rti_n = len(acc["realTimeIntelligence"])
+    roles = sum(e["roleAssignments"]["actual"] for e in gov["environments"])
     rows_total = sum(acc["dataset"]["tableRowCounts"].values())
     gov_by_env = {e["environment"]: e for e in gov["environments"]}
-    clean = gov["driftCount"] == 0
+    counts = {n: count_actions(r) for n, r in [("provision", prov), ("deploy", dep), ("accelerate", acc)]}
+    total = sum(a + b for a, b in counts.values())
+    changed = sum(b for _, b in counts.values())
+    drift = gov["driftCount"]
+    healthy = sum(1 for i in op["items"] if i["health"] == "healthy")
+    unknown = len(op["items"]) - healthy
 
-    nav = "".join(
-        f'<a class="{"on" if i == 0 else ""}">{n}<i></i></a>'
-        for i, n in enumerate(["Provision", "Deploy", "Operate", "Govern", "Accelerate"])
-    )
+    def plan_row(cmd: str, detail: str, verdict: str, ok: bool = True) -> str:
+        cls = "g" if ok else "a"
+        return f'<div class="r"><span class="w">{cmd}</span><span class="c">{detail}</span><span class="{cls}">{verdict}</span></div>'
 
-    kpis = "".join(
-        f'<div class="kpi"><div class="l">{l}</div><div class="n">{n}</div><div class="d">{d}</div></div>'
-        for l, n, d in [
-            ("Workspaces", len(prov["environments"]), "dev, test, prod"),
-            ("Fabric items", items + len(acc["realTimeIntelligence"]), f"{items} starter, {len(acc['realTimeIntelligence'])} real-time"),
-            ("Role assignments", sum(e["roleAssignments"]["actual"] for e in gov["environments"]), "all groups, reconciled"),
-            ("Drift findings", gov["driftCount"], "report-only policy"),
-            ("Synthetic rows", f"{rows_total:,}", "Synthea, seeded"),
-        ]
-    )
+    plan = "".join([
+        plan_row("provision-live", f'{counts["provision"][0]} unchanged, {counts["provision"][1]} to change', "no-op" if not counts["provision"][1] else "changed", not counts["provision"][1]),
+        plan_row("deploy-live", f'{counts["deploy"][0]} unchanged, {counts["deploy"][1]} to change', "no-op" if not counts["deploy"][1] else "changed", not counts["deploy"][1]),
+        plan_row("accelerate-live", f'{counts["accelerate"][0]} unchanged, {counts["accelerate"][1]} to change', "no-op" if not counts["accelerate"][1] else "changed", not counts["accelerate"][1]),
+        plan_row("operate-live", f"{healthy} healthy, {unknown} unknown", "read-only", unknown == 0),
+        plan_row("govern-live", f"{drift} drift findings", "clean" if drift == 0 else "drift", drift == 0),
+    ])
 
     env_rows = ""
     for e in prov["environments"]:
         g = gov_by_env[e["environment"]]
         ra, si = g["roleAssignments"], g["starterItems"]
         env_rows += (
-            f'<tr><td><b>{esc(e["workspaceName"])}</b></td>'
-            f'<td>{CHECK}</td>'
-            f'<td>{ra["desired"] - ra["missing"]} of {ra["desired"]}</td>'
-            f'<td>{si["expected"] - si["missing"]} of {si["expected"]}</td>'
+            f'<tr><td class="nm">{esc(e["workspaceName"])}</td>'
+            f'<td><span class="sq"></span></td>'
+            f'<td>{ra["desired"] - ra["missing"]}/{ra["desired"]}</td>'
+            f'<td>{si["expected"] - si["missing"]}/{si["expected"]}</td>'
             f'<td>{g["devReferences"]}</td><td class="mono">{esc(g["workspaceIdHash"])}</td>'
-            f'<td>{status("In sync")}</td></tr>'
+            f'<td class="r">{status("In sync")}</td></tr>'
         )
 
     types = [a["type"] for a in dep["environments"][0]["actions"]]
     mat_rows = ""
     for t in types:
         cells = "".join(
-            f'<td class="r">{CHECK}</td>'
+            '<td class="r"><span class="sq"></span></td>'
             if any(a["type"] == t and a["action"] == "no-op" for a in e["actions"])
             else '<td class="r dim">-</td>'
             for e in dep["environments"]
         )
         name = next(a["item"] for a in dep["environments"][0]["actions"] if a["type"] == t)
-        mat_rows += f'<tr><td><span class="ic">{icon(t)}{esc(name)}</span></td><td class="dim">{esc(t)}</td>{cells}</tr>'
+        mat_rows += f'<tr><td class="nm">{esc(name)}</td><td class="mono">{esc(t)}</td>{cells}</tr>'
 
     jobs = ""
     for i in op["items"]:
         ok = i["health"] == "healthy"
         jobs += (
-            f'<tr><td class="w"><b>{esc(i["name"])}</b><div class="dim">{esc(i["owner"])}</div></td>'
-            f'<td>{status(i["health"].capitalize(), "" if ok else "idle")}</td>'
-            f'<td>{esc(i["latestJobStatus"] or "No runs")}</td><td class="r">{duration(i)}</td></tr>'
+            f'<tr><td class="w"><span class="nm">{esc(i["name"])}</span><span class="sub2">{esc(i["owner"])}</span></td>'
+            f'<td>{status(i["health"], "" if ok else "idle")}</td>'
+            f'<td>{esc((i["latestJobStatus"] or "no runs").lower())}</td><td class="r">{duration(i)}</td></tr>'
         )
 
     rti = "".join(
-        f'<tr><td><span class="ic">{icon(r["type"])}{esc(r["item"])}</span></td><td class="dim">{esc(r["type"])}</td>'
+        f'<tr><td class="nm">{esc(r["item"])}</td><td class="mono">{esc(r["type"])}</td>'
         f'<td class="r">{status("Present")}</td></tr>'
         for r in acc["realTimeIntelligence"]
     )
 
-    counts = acc["dataset"]["tableRowCounts"]
-    top = max(counts.values())
+    table_counts = acc["dataset"]["tableRowCounts"]
+    top = max(table_counts.values())
+    bars = "".join(
+        f'<tr><td>{esc(k)}</td><td class="bw"><span class="bar" style="width:{max(1.0, v * 100 / top):.1f}%"></span></td>'
+        f'<td class="r mono" style="color:var(--ink)">{v:,}</td></tr>'
+        for k, v in sorted(table_counts.items(), key=lambda kv: -kv[1])
+    )
     uploads = "".join(
-        f'<tr><td class="mono">{esc(r["table"])}.csv</td><td class="r">{r["bytes"] / 1024:,.0f} KB</td>'
-        f'<td class="mono dim">{esc(r["sha256"])}</td><td class="r">{status("Uploaded")}</td></tr>'
+        f'<tr><td class="mono" style="color:var(--ink)">{esc(r["table"])}.csv</td><td class="r mono">{r["bytes"] / 1024:,.0f} KB</td>'
+        f'<td class="mono dim" style="padding-left:28px">{esc(r["sha256"])}</td><td class="r">{status("Uploaded")}</td></tr>'
         for r in acc["syntheaUpload"]
     )
-    bars = "".join(
-        f'<tr><td>{esc(k)}</td><td><span class="track"><i style="width:{max(1.5, v * 100 / top):.1f}%"></i></span></td>'
-        f'<td class="r">{v:,}</td>'
-        + "</tr>"
-        for k, v in sorted(counts.items(), key=lambda kv: -kv[1])
-    )
+
     return f"""<html><head><meta charset="utf-8"><style>{CSS}</style></head><body>
-<div class="bar"><div class="brand">{LOGO}FabricOps Copilot</div><div class="nav">{nav}</div>
-<div class="right"><span class="env">Sandbox</span>{LIVE_CHIP if live else ""}<span>Last reconciled {now}</span></div></div>
+{masthead(live, stamp)}
 <div class="page">
-<div class="crumb">Northwind Health &nbsp;/&nbsp; care-operations</div>
-<div class="titlerow"><div><h1>Environment overview</h1>
-<div class="sub">Three governed workspaces, starter content, job health and a real-time foundation, all driven by one configuration file.</div></div>
-<div class="status"><i></i>{"All checks passing" if clean else "Drift detected"}</div></div>
-<div class="kpis">{kpis}</div>
-<div class="cols">
-<div class="stack">
-<div class="panel"><div class="ph"><span class="k">PROVISION</span><span class="k">GOVERN</span><h2>Workspaces</h2><code>provision-live &middot; govern-live</code></div>
-<table><tr><th>Workspace</th><th>Capacity</th><th>Roles</th><th>Items</th><th>Dev refs</th><th>Id (hash)</th><th>State</th></tr>{env_rows}</table>
-<div class="note">Desired and actual state compared for capacity, roles and items. Remediation is report-only; the owner principal is allow-listed.</div></div>
-<div class="panel"><div class="ph"><span class="k">DEPLOY</span><h2>Promotion</h2><code>deploy-live</code></div>
-<div class="flow"><span class="node cur">dev</span><span class="arrow"></span><span class="node">test</span><span class="arrow"></span><span class="node">prod</span>
-<span class="gate">Production requires reviewer approval</span></div>
-<table><tr><th>Item</th><th>Type</th><th class="r">dev</th><th class="r">test</th><th class="r">prod</th></tr>{mat_rows}</table>
-<div class="note">Rerun result: every item is a no-op, so no duplicates are created.</div></div>
+<div class="hero"><div>
+<div class="eyebrow">Run ledger &middot; {"all checks passing" if drift == 0 else "drift detected"}</div>
+<p class="lede"><b>{len(prov["environments"])}</b> workspaces, <b>{starter + rti_n}</b> Fabric items and <b>{roles}</b> role assignments match the configuration. A full rerun changed <b>{changed}</b> of {total} resources.</p>
+<div class="lede2">Everything below was created and verified by the FabricOps commands against a real Fabric capacity, seeded with {rows_total:,} rows of Synthea synthetic patient data.</div>
 </div>
-<div class="stack">
-<div class="panel"><div class="ph"><span class="k">OPERATE</span><h2>Job health</h2><code>operate-live</code></div>
-<table><tr><th>Monitored job</th><th>Health</th><th>Last run</th><th class="r">Duration</th></tr>{jobs}</table>
-<div class="note">Retries are denied unless a job is declared retryable with an attempt limit. Jobs with no matching item stay unknown.</div></div>
-<div class="panel"><div class="ph"><span class="k">ACCELERATE</span><h2>Real-Time Intelligence</h2><code>accelerate-live</code></div>
+<div class="term"><div class="t">$ fabricops &lt;command&gt;-live --config project.yml</div>{plan}</div></div>
+
+<div class="cols">
+<div>
+<div class="sec"><div class="sh"><span class="no">01</span><h2>Provision &amp; Govern</h2><code>provision-live &middot; govern-live</code></div>
+<table><tr><th>Workspace</th><th>Capacity</th><th>Roles</th><th>Items</th><th>Dev refs</th><th>Id (hash)</th><th class="r">State</th></tr>{env_rows}</table>
+<p class="margin">Desired and actual state are compared for capacity, roles and items. Remediation is report-only and the owner principal is allow-listed.</p></div>
+<div class="sec"><div class="sh"><span class="no">02</span><h2>Deploy</h2><code>deploy-live</code></div>
+<div class="route"><b>dev</b>&rarr;<b>test</b>&rarr;<b>prod</b><span class="gate">production waits for a reviewer</span></div>
+<table><tr><th>Item</th><th>Type</th><th class="r">dev</th><th class="r" style="width:54px">test</th><th class="r" style="width:54px">prod</th></tr>{mat_rows}</table>
+<p class="margin">On rerun every item is a no-op, so no duplicates are created.</p></div>
+</div>
+<div>
+<div class="sec"><div class="sh"><span class="no">03</span><h2>Operate</h2><code>operate-live</code></div>
+<table><tr><th>Monitored job</th><th>Health</th><th>Last run</th><th class="r">Took</th></tr>{jobs}</table>
+<p class="margin">Retries are denied unless a job is declared retryable with an attempt limit. A job with no matching item stays unknown.</p></div>
+<div class="sec"><div class="sh"><span class="no">04</span><h2>Real-Time Intelligence</h2><code>accelerate-live</code></div>
 <table><tr><th>Item</th><th>Type</th><th class="r">State</th></tr>{rti}</table>
-<div class="note">Dev workspace. Fabric IQ, ontology and agent templates are capability probes (preview APIs).</div></div>
+<p class="margin">Dev workspace. Fabric IQ, ontology and agent templates are capability probes against preview APIs.</p></div>
 </div></div>
-<div class="cols" style="margin-bottom:0"><div class="panel"><div class="ph"><span class="k">ACCELERATE</span><h2>Synthea dataset</h2><code>dataset {esc(acc["dataset"]["datasetHash"])}</code></div>
-<table><tr><th>Table</th><th style="width:36%">Share of rows</th><th class="r">Rows</th></tr>{bars}</table>
-<div class="note">Seeded synthetic patients. Only counts and a hash are reported.</div></div>
-<div class="panel"><div class="ph"><span class="k">ACCELERATE</span><h2>Lakehouse upload</h2><code>Files/synthea</code></div>
-<table><tr><th>File</th><th class="r">Size</th><th>SHA-256</th><th class="r">State</th></tr>{uploads}</table>
-<div class="note">Dev workspace Lakehouse. A rerun leaves identical files untouched.</div></div></div>
-<div class="foot" style="margin-top:12px"><span>Generated from sanitized live reports. Workspace and item identifiers are hashed.</span><span>github.com/samueltauil/fabricops-copilot</span></div>
+
+<div class="cols">
+<div class="sec"><div class="sh"><span class="no">05</span><h2>Synthea dataset</h2><code>sha {esc(acc["dataset"]["datasetHash"])}</code></div>
+<table><tr><th>Table</th><th>Rows, to scale</th><th class="r">Count</th></tr>{bars}</table>
+<p class="margin">Seeded synthetic patients. Only counts and a hash leave the sandbox.</p></div>
+<div class="sec"><div class="sh"><span class="no">06</span><h2>Lakehouse upload</h2><code>Files/synthea</code></div>
+<table><tr><th>File</th><th class="r">Size</th><th style="padding-left:28px">SHA-256</th><th class="r">State</th></tr>{uploads}</table>
+<p class="margin">Dev workspace Lakehouse. A rerun leaves identical files untouched.</p></div>
+</div>
+
+<div class="foot"><span>Generated from sanitized live reports. Workspace and item identifiers are hashed.</span><span>github.com/samueltauil/fabricops-copilot</span></div>
 </div></body></html>"""
 
 
