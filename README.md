@@ -23,7 +23,7 @@ FabricOps Copilot
 
 ## Live demo (real Fabric tenant, IDs shown only as hashes)
 
-Everything below was captured from commands run against a real Fabric capacity.
+Everything below is a real screenshot of a terminal window running the commands against a real Fabric capacity (workspace IDs appear only as hashes).
 
 Provision: three workspaces (dev/test/prod) with capacity and Admin/Contributor/Viewer roles; reruns are no-ops:
 
@@ -33,7 +33,7 @@ Deploy: Lakehouse, Notebook and DataPipeline promoted to every environment:
 
 ![deploy](docs/images/02-live-deploy.png)
 
-Operate: captured output of a live run (Job Scheduler APIs):
+Operate: live run (Job Scheduler APIs):
 
 ![live operate](docs/images/09-live-operate.png)
 
@@ -41,13 +41,9 @@ Govern: desired vs. actual, zero drift:
 
 ![live govern](docs/images/07-live-govern.png)
 
-Accelerate: captured output of a live rerun (RTI items plus Synthea data in the dev Lakehouse):
+Accelerate: live rerun, including the Synthea dataset counts (RTI items plus Synthea data in the dev Lakehouse):
 
 ![live accelerate](docs/images/08-live-accelerate.png)
-
-Synthea synthetic dataset (aggregate counts only):
-
-![synthea](docs/images/04-synthea-dataset.png)
 
 ## Quick start (your own Fabric tenant)
 
