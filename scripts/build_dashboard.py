@@ -1,7 +1,7 @@
-"""Build a visual dashboard from the live FabricOps reports and screenshot it.
+"""Build a dashboard from the live FabricOps reports and screenshot it.
 
 Reads the sanitized JSON reports written by the *-live commands (hashed IDs only),
-renders an HTML page, and captures PNGs with a headless browser.
+renders a static HTML console view, and captures a PNG with a headless browser.
 """
 
 from __future__ import annotations
@@ -18,161 +18,227 @@ REPORTS = Path(sys.argv[1] if len(sys.argv) > 1 else "artifacts/real")
 OUT = Path("docs/images")
 
 CSS = """
+:root{
+  --bg:#f5f6f8;--panel:#fff;--line:#e3e6ea;--line2:#eef0f3;--ink:#1a1f26;--ink2:#4b5563;--mute:#7b8594;
+  --accent:#0b6e5f;--accent-bg:#e6f2ef;--ok:#17803d;--warn:#b45309;--bad:#b42318;
+  --mono:'Cascadia Mono','Consolas',monospace;
+}
 *{box-sizing:border-box}
-body{margin:0;font-family:'Segoe UI Variable','Segoe UI',system-ui,sans-serif;color:#1b2430;background:#f3f5f9;width:1320px}
-.hero{background:linear-gradient(120deg,#0b3d3a 0,#0f6e63 45%,#1a8f7a 100%);color:#fff;padding:36px 44px 74px;position:relative}
-.hero h1{margin:0;font-size:36px;font-weight:700;letter-spacing:-.6px}.hero h1 span{font-weight:300;opacity:.85}
-.hero .sub{margin-top:8px;font-size:15px;opacity:.82}
-.live{position:absolute;right:44px;top:40px;background:#ffffff22;border:1px solid #ffffff55;border-radius:99px;padding:6px 14px;font-size:13px;font-weight:600}
-.live:before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#5ef2a0;margin-right:8px;box-shadow:0 0 8px #5ef2a0}
-.wrap{padding:0 44px 36px;margin-top:-52px;position:relative;z-index:3}
-.flow{display:grid;grid-template-columns:repeat(5,1fr);background:#fff;border-radius:14px;box-shadow:0 6px 24px #0b1e3a1f;margin-bottom:22px}
-.step{padding:16px 18px;border-right:1px solid #e6eaf1;position:relative}.step:last-child{border:0}
-.step .n{font-size:11px;letter-spacing:1.2px;color:#6b7a90}
-.step .t{font-size:18px;font-weight:700;margin:3px 0}.step .s{font-size:12.5px;color:#0f7b4b;font-weight:600}
-.step:after{content:"";position:absolute;right:-6px;top:50%;margin-top:-6px;width:10px;height:10px;background:#fff;border-top:2px solid #9aa7ba;border-right:2px solid #9aa7ba;transform:rotate(45deg);z-index:2}.step:last-child:after{display:none}
-.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px}
-.pill{background:#fff;border-radius:12px;padding:16px 18px;border-left:4px solid #0f7b6c;box-shadow:0 1px 3px #0b1e3a14}
-.pill .k{font-size:11.5px;color:#6b7a90;text-transform:uppercase;letter-spacing:1px}
-.pill .v{font-size:32px;font-weight:700;margin-top:4px;color:#0b3d3a}
-.pill .v.ok{color:#0f7b4b}.pill .v.warn{color:#b26a00}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
-.card{background:#fff;border-radius:14px;padding:22px;box-shadow:0 1px 3px #0b1e3a14}
-.card h2{margin:0 0 14px;font-size:17px;display:flex;align-items:center;gap:10px;color:#0b3d3a}
-.tag{font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;background:#e3f4f0;color:#0f6e63}
-table{width:100%;border-collapse:collapse;font-size:13.5px}
-th{color:#6b7a90;text-align:left;font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;padding:6px 8px;border-bottom:2px solid #e6eaf1}
-td{padding:9px 8px;border-bottom:1px solid #eef1f6}
-.b{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:600}
-.b.ok{background:#dff5e8;color:#0f7b4b}.b.warn{background:#fff1d6;color:#9a5b00}.b.info{background:#e3f4f0;color:#0f6e63}
-.env{display:flex;gap:10px;align-items:center;margin-bottom:10px}
-.dot{width:10px;height:10px;border-radius:50%;background:#18b26b}.mono{font-family:Consolas,monospace;color:#6b7a90;font-size:12.5px}
-.bar{height:8px;border-radius:99px;background:#e6eaf1;overflow:hidden;margin-top:6px}
-.bar i{display:block;height:100%;background:linear-gradient(90deg,#0f7b6c,#18b26b)}
-.foot{color:#6b7a90;font-size:12px;margin-top:12px}
+body{margin:0;width:1440px;background:var(--bg);color:var(--ink);font:13px/1.45 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+.bar{height:52px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 32px;gap:28px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;letter-spacing:-.1px}
+.brand svg{display:block}
+.nav{display:flex;gap:2px;height:100%;margin-left:8px}
+.nav a{display:flex;align-items:center;gap:8px;padding:0 14px;color:var(--ink2);font-size:13px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.nav a.on{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
+.nav i{width:6px;height:6px;border-radius:50%;background:var(--ok);display:block}
+.right{margin-left:auto;display:flex;align-items:center;gap:18px;color:var(--mute);font-size:12px}
+.env{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:4px;padding:3px 9px;color:var(--ink2);font-size:12px;background:#fafbfc}
+.page{padding:24px 32px 28px}
+.crumb{color:var(--mute);font-size:12px;margin-bottom:6px}
+.titlerow{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.3px}
+.sub{color:var(--ink2);margin-top:3px}
+.status{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ok);font-weight:600}
+.status i{width:8px;height:8px;border-radius:50%;background:var(--ok);display:block;box-shadow:0 0 0 3px #17803d22}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);background:var(--panel);border:1px solid var(--line);border-radius:6px;margin-bottom:16px}
+.kpi{padding:14px 18px 15px;border-right:1px solid var(--line2)}.kpi:last-child{border:0}
+.kpi .l{color:var(--mute);font-size:12px}
+.kpi .n{font-size:28px;font-weight:600;letter-spacing:-.6px;margin:2px 0 1px;line-height:1.15}
+.kpi .d{color:var(--mute);font-size:12px}
+.cols{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;margin-bottom:16px;align-items:start}
+.stack{display:flex;flex-direction:column;gap:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.ph{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--line)}
+.ph h2{margin:0;font-size:14px;font-weight:600}
+.ph .k{font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-bg);border-radius:3px;padding:1px 6px;letter-spacing:.2px}
+.ph code{margin-left:auto;font:11.5px var(--mono);color:var(--mute)}
+table{width:100%;border-collapse:collapse}
+th{white-space:nowrap;font-weight:500;color:var(--mute);font-size:12px;text-align:left;padding:8px 18px;background:#fafbfc;border-bottom:1px solid var(--line)}
+td{white-space:nowrap;padding:10px 18px;border-bottom:1px solid var(--line2);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+th.r,td.r{text-align:right}td.w{white-space:normal}
+th,td{padding-left:14px;padding-right:14px}th:first-child,td:first-child{padding-left:18px}th:last-child,td:last-child{padding-right:18px}
+.mono{font-family:var(--mono);font-size:12px;color:var(--ink2)}
+.dim{color:var(--mute)}
+.st{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.st i{width:8px;height:8px;border-radius:50%;display:block;background:var(--ok)}
+.st.warn i{background:#d97706}.st.idle i{background:#fff;border:1.5px solid #9aa3af}
+.ic{display:inline-flex;align-items:center;gap:9px;font-weight:500}
+.ic svg{flex:none}
+.ck{color:var(--ok);display:inline-block;vertical-align:-2px}
+.note{padding:10px 18px;border-top:1px solid var(--line);background:#fafbfc;color:var(--mute);font-size:12px}
+.flow{display:flex;align-items:center;gap:0;padding:16px 18px 6px}
+.node{border:1px solid var(--line);border-radius:4px;padding:6px 14px;font-weight:600;font-size:12.5px;background:#fff}
+.node.cur{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
+.arrow{flex:none;width:34px;height:1px;background:#b6bdc7;position:relative}
+.arrow:after{content:"";position:absolute;right:0;top:-3px;width:6px;height:6px;border-top:1px solid #b6bdc7;border-right:1px solid #b6bdc7;transform:rotate(45deg)}
+.gate{margin-left:auto;color:var(--mute);font-size:12px;display:flex;align-items:center;gap:6px}
+.hb{display:flex;align-items:center;gap:12px}
+.hb .t{width:92px;color:var(--ink2)}
+.track{display:block;flex:1;height:8px;background:var(--line2);border-radius:2px;overflow:hidden}
+.track i{display:block;height:100%;background:var(--accent);border-radius:2px}
+.hb .v{width:62px;text-align:right}
+.foot{display:flex;justify-content:space-between;color:var(--mute);font-size:12px;padding:2px 2px 0}.cols+.foot{margin-top:16px}
 """
+
+ICONS = {
+    "Lakehouse": ("#0f6cbd", '<path d="M3 8.5 8 4l5 4.5V13H3z" fill="none" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/>'),
+    "Notebook": ("#5b6b7c", '<path d="M5 3.5h6v9H5zM7 6.5h2M7 9h2" fill="none" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>'),
+    "DataPipeline": ("#107c41", '<path d="M3.5 5.5h3v5h-3zM9.5 5.5h3v5h-3zM6.5 8h3" fill="none" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/>'),
+    "Eventhouse": ("#0f6cbd", '<path d="M3 13V8l5-4 5 4v5M6.5 13V9.5h3V13" fill="none" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/>'),
+    "KQLDatabase": ("#3a7bd5", '<ellipse cx="8" cy="5" rx="4" ry="1.7" fill="none" stroke="#fff" stroke-width="1.3"/><path d="M4 5v6c0 .9 1.8 1.7 4 1.7s4-.8 4-1.7V5" fill="none" stroke="#fff" stroke-width="1.3"/>'),
+    "Eventstream": ("#c239b3", '<path d="M2.5 8c1.2-3 2.3-3 3.5 0s2.3 3 3.5 0 2.3-3 4 0" fill="none" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>'),
+}
+CHECK = '<svg class="ck" width="14" height="14" viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+LOGO = (
+    '<svg width="24" height="24" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#0b6e5f"/>'
+    '<path d="M7 7h10M7 12h7M7 17h4" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>'
+)
 
 
 def load(name: str) -> dict:
     return json.loads((REPORTS / name).read_text(encoding="utf-8"))
 
 
-def badge(text: str, kind: str = "ok") -> str:
-    return f'<span class="b {kind}">{html.escape(text)}</span>'
+def esc(value: object) -> str:
+    return html.escape(str(value))
 
 
-def kind_for(action: str) -> str:
-    return "ok" if action in {"no-op", "healthy", "present (default database)"} else "warn"
+def icon(kind: str) -> str:
+    color, glyph = ICONS[kind]
+    return (
+        f'<svg width="18" height="18" viewBox="0 0 16 16"><rect width="16" height="16" rx="3" fill="{color}"/>{glyph}</svg>'
+    )
+
+
+def status(text: str, kind: str = "") -> str:
+    return f'<span class="st {kind}"><i></i>{esc(text)}</span>'
+
+
+def duration(job: dict) -> str:
+    if not job.get("latestJobStartUtc") or not job.get("latestJobEndUtc"):
+        return "-"
+    parse = lambda s: datetime.fromisoformat(s.rstrip("Z")[:26])  # noqa: E731
+    secs = (parse(job["latestJobEndUtc"]) - parse(job["latestJobStartUtc"])).total_seconds()
+    return f"{secs:.0f} s"
 
 
 def build() -> str:
     prov, dep = load("live-provision.json"), load("live-deploy.json")
     op, gov, acc = load("live-operate.json"), load("live-govern.json"), load("live-accelerate.json")
-    rows = dep["environments"]
-    items = sum(len(e["actions"]) for e in rows)
-    roles = sum(1 for e in prov["environments"] for a in e["actions"] if a["resource"].startswith("role/"))
-    rows_total = sum(acc["dataset"]["tableRowCounts"].values())
-    health = op["summary"]
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    items = sum(len(e["actions"]) for e in dep["environments"])
+    rows_total = sum(acc["dataset"]["tableRowCounts"].values())
+    gov_by_env = {e["environment"]: e for e in gov["environments"]}
+    clean = gov["driftCount"] == 0
 
-    def pill(k: str, v: str, cls: str) -> str:
-        return f'<div class="pill"><div class="k">{k}</div><div class="v {cls}">{v}</div></div>'
+    nav = "".join(
+        f'<a class="{"on" if i == 0 else ""}">{n}<i></i></a>'
+        for i, n in enumerate(["Provision", "Deploy", "Operate", "Govern", "Accelerate"])
+    )
 
-    pills = "".join(
-        [
-            pill("Workspaces", str(len(prov["environments"])), "info"),
-            pill("Starter items", str(items), "info"),
-            pill("Role assignments", str(roles), "info"),
-            pill("Drift findings", str(gov["driftCount"]), "ok" if gov["driftCount"] == 0 else "warn"),
-            pill("Synthea rows", f"{rows_total:,}", "ok"),
+    kpis = "".join(
+        f'<div class="kpi"><div class="l">{l}</div><div class="n">{n}</div><div class="d">{d}</div></div>'
+        for l, n, d in [
+            ("Workspaces", len(prov["environments"]), "dev, test, prod"),
+            ("Fabric items", items + len(acc["realTimeIntelligence"]), f"{items} starter, {len(acc['realTimeIntelligence'])} real-time"),
+            ("Role assignments", sum(e["roleAssignments"]["actual"] for e in gov["environments"]), "all groups, reconciled"),
+            ("Drift findings", gov["driftCount"], "report-only policy"),
+            ("Synthetic rows", f"{rows_total:,}", "Synthea, seeded"),
         ]
     )
 
-    envs = "".join(
-        f'<div class="env"><span class="dot"></span><b>{html.escape(e["workspaceName"])}</b>'
-        f'<span class="mono">{html.escape(e["environment"])}</span></div>'
-        + "".join(
-            f'<span style="margin-right:6px">{badge(a["resource"].replace("role/", ""), kind_for(a["action"]))}</span>'
-            for a in e["actions"]
+    env_rows = ""
+    for e in prov["environments"]:
+        g = gov_by_env[e["environment"]]
+        ra, si = g["roleAssignments"], g["starterItems"]
+        env_rows += (
+            f'<tr><td><b>{esc(e["workspaceName"])}</b></td>'
+            f'<td>{CHECK}</td>'
+            f'<td>{ra["desired"] - ra["missing"]} of {ra["desired"]}</td>'
+            f'<td>{si["expected"] - si["missing"]} of {si["expected"]}</td>'
+            f'<td>{g["devReferences"]}</td><td class="mono">{esc(g["workspaceIdHash"])}</td>'
+            f'<td>{status("In sync")}</td></tr>'
         )
-        + '<div style="height:12px"></div>'
-        for e in prov["environments"]
-    )
 
-    dep_rows = "".join(
-        f'<tr><td>{html.escape(e["environment"])}</td>'
-        + "".join(f"<td>{badge(a['action'], kind_for(a['action']))}</td>" for a in e["actions"])
-        + "</tr>"
-        for e in rows
-    )
-    head = "".join(f"<th>{html.escape(a['type'])}</th>" for a in rows[0]["actions"])
+    types = [a["type"] for a in dep["environments"][0]["actions"]]
+    mat_rows = ""
+    for t in types:
+        cells = "".join(
+            f'<td class="r">{CHECK}</td>'
+            if any(a["type"] == t and a["action"] == "no-op" for a in e["actions"])
+            else '<td class="r dim">-</td>'
+            for e in dep["environments"]
+        )
+        name = next(a["item"] for a in dep["environments"][0]["actions"] if a["type"] == t)
+        mat_rows += f'<tr><td><span class="ic">{icon(t)}{esc(name)}</span></td><td class="dim">{esc(t)}</td>{cells}</tr>'
 
-    mon = "".join(
-        f'<tr><td>{html.escape(i["name"])}</td><td class="mono">{html.escape(i["owner"])}</td>'
-        f'<td>{badge(i["health"], "ok" if i["health"] == "healthy" else "warn")}</td>'
-        f'<td>{html.escape(str(i["latestJobStatus"] or "-"))}</td></tr>'
-        for i in op["items"]
-    )
-
-    gov_rows = "".join(
-        f'<tr><td>{html.escape(e["environment"])}</td><td>{badge("capacity ok" if e["capacityMatches"] else "capacity drift", "ok" if e["capacityMatches"] else "warn")}</td>'
-        f'<td>{e["roleAssignments"]["missing"]}/{e["roleAssignments"]["unexpected"]}</td>'
-        f'<td>{e["starterItems"]["missing"]}</td><td>{e["devReferences"]}</td>'
-        f'<td class="mono">{html.escape(e["workspaceIdHash"])}</td></tr>'
-        for e in gov["environments"]
-    )
+    jobs = ""
+    for i in op["items"]:
+        ok = i["health"] == "healthy"
+        jobs += (
+            f'<tr><td class="w"><b>{esc(i["name"])}</b><div class="dim">{esc(i["owner"])}</div></td>'
+            f'<td>{status(i["health"].capitalize(), "" if ok else "idle")}</td>'
+            f'<td>{esc(i["latestJobStatus"] or "No runs")}</td><td class="r">{duration(i)}</td></tr>'
+        )
 
     rti = "".join(
-        f'<tr><td>{html.escape(r["type"])}</td><td>{html.escape(r["item"])}</td><td>{badge(r["action"], kind_for(r["action"]))}</td></tr>'
+        f'<tr><td><span class="ic">{icon(r["type"])}{esc(r["item"])}</span></td><td class="dim">{esc(r["type"])}</td>'
+        f'<td class="r">{status("Present")}</td></tr>'
         for r in acc["realTimeIntelligence"]
     )
-    biggest = max(r["bytes"] for r in acc["syntheaUpload"])
-    files = "".join(
-        f'<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between"><span>{html.escape(r["table"])}.csv</span>'
-        f'<span class="mono">{r["bytes"]:,} bytes {badge(r["action"], kind_for(r["action"]))}</span></div>'
-        f'<div class="bar"><i style="width:{max(3, r["bytes"] * 100 // biggest)}%"></i></div></div>'
+
+    counts = acc["dataset"]["tableRowCounts"]
+    top = max(counts.values())
+    uploads = "".join(
+        f'<tr><td class="mono">{esc(r["table"])}.csv</td><td class="r">{r["bytes"] / 1024:,.0f} KB</td>'
+        f'<td class="mono dim">{esc(r["sha256"])}</td><td class="r">{status("Uploaded")}</td></tr>'
         for r in acc["syntheaUpload"]
     )
-    counts = acc["dataset"]["tableRowCounts"]
-    count_tbl = "".join(f"<tr><td>{k}</td><td>{v:,}</td></tr>" for k, v in counts.items())
-
-    flow = "".join(
-        f'<div class="step"><div class="n">{n}</div><div class="t">{t}</div><div class="s">&#10003; {st}</div></div>'
-        for n, t, st in [
-            ("01", "Provision", f"{len(prov['environments'])} workspaces"),
-            ("02", "Deploy", f"{items} items, idempotent"),
-            ("03", "Operate", f"{health.get('healthy', 0)} healthy job"),
-            ("04", "Govern", f"{gov['driftCount']} drift findings"),
-            ("05", "Accelerate", "RTI + Synthea"),
-        ]
+    bars = "".join(
+        f'<tr><td>{esc(k)}</td><td><span class="track"><i style="width:{max(1.5, v * 100 / top):.1f}%"></i></span></td>'
+        f'<td class="r">{v:,}</td>'
+        + "</tr>"
+        for k, v in sorted(counts.items(), key=lambda kv: -kv[1])
     )
-
     return f"""<html><head><meta charset="utf-8"><style>{CSS}</style></head><body>
-<div class="hero"><div class="live">LIVE SANDBOX</div><h1>FabricOps <span>Copilot</span></h1>
-<div class="sub">Governed Microsoft Fabric administration &middot; synthetic healthcare (Synthea) &middot; generated {now} from live reports</div></div>
-<div class="wrap">
-<div class="flow">{flow}</div>
-<div class="grid">{pills}</div>
-<div class="row">
-<div class="card" id="provision"><h2>Provision <span class="tag">landing zone</span></h2>{envs}</div>
-<div class="card" id="deploy"><h2>Deploy <span class="tag">dev &rarr; test &rarr; prod</span></h2>
-<table><tr><th>Env</th>{head}</tr>{dep_rows}</table>
-<div class="foot">Reruns are idempotent: every action is a no-op.</div></div></div>
-<div class="row">
-<div class="card" id="operate"><h2>Operate <span class="tag">Job Scheduler</span></h2>
-<table><tr><th>Monitored item</th><th>Owner</th><th>Health</th><th>Latest job</th></tr>{mon}</table>
-<div class="foot">healthy={health.get("healthy", 0)} &middot; unknown={health.get("unknown", 0)} (no matching Fabric item)</div></div>
-<div class="card" id="govern"><h2>Govern <span class="tag">drift</span></h2>
-<table><tr><th>Env</th><th>Capacity</th><th>Roles miss/extra</th><th>Items missing</th><th>Dev refs</th><th>Workspace</th></tr>{gov_rows}</table>
-<div class="foot">Report-only. IDs are hashed.</div></div></div>
-<div class="row">
-<div class="card" id="accelerate"><h2>Accelerate <span class="tag">Real-Time Intelligence</span></h2>
-<table><tr><th>Type</th><th>Item</th><th>State</th></tr>{rti}</table>
-<div style="height:14px"></div>{files}</div>
-<div class="card" id="synthea"><h2>Synthea dataset <span class="tag">synthetic</span></h2>
-<table><tr><th>Table</th><th>Rows</th></tr>{count_tbl}</table>
-<div class="foot">Dataset hash {html.escape(acc["dataset"]["datasetHash"])}. No patient data is committed.</div></div></div>
-</body></html>"""
+<div class="bar"><div class="brand">{LOGO}FabricOps Copilot</div><div class="nav">{nav}</div>
+<div class="right"><span class="env">Sandbox</span><span>Last reconciled {now}</span></div></div>
+<div class="page">
+<div class="crumb">Northwind Health &nbsp;/&nbsp; care-operations</div>
+<div class="titlerow"><div><h1>Environment overview</h1>
+<div class="sub">Three governed workspaces, starter content, job health and a real-time foundation, all driven by one configuration file.</div></div>
+<div class="status"><i></i>{"All checks passing" if clean else "Drift detected"}</div></div>
+<div class="kpis">{kpis}</div>
+<div class="cols">
+<div class="stack">
+<div class="panel"><div class="ph"><span class="k">PROVISION</span><span class="k">GOVERN</span><h2>Workspaces</h2><code>provision-live &middot; govern-live</code></div>
+<table><tr><th>Workspace</th><th>Capacity</th><th>Roles</th><th>Items</th><th>Dev refs</th><th>Id (hash)</th><th>State</th></tr>{env_rows}</table>
+<div class="note">Desired and actual state compared for capacity, roles and items. Remediation is report-only; the owner principal is allow-listed.</div></div>
+<div class="panel"><div class="ph"><span class="k">DEPLOY</span><h2>Promotion</h2><code>deploy-live</code></div>
+<div class="flow"><span class="node cur">dev</span><span class="arrow"></span><span class="node">test</span><span class="arrow"></span><span class="node">prod</span>
+<span class="gate">Production requires reviewer approval</span></div>
+<table><tr><th>Item</th><th>Type</th><th class="r">dev</th><th class="r">test</th><th class="r">prod</th></tr>{mat_rows}</table>
+<div class="note">Rerun result: every item is a no-op, so no duplicates are created.</div></div>
+</div>
+<div class="stack">
+<div class="panel"><div class="ph"><span class="k">OPERATE</span><h2>Job health</h2><code>operate-live</code></div>
+<table><tr><th>Monitored job</th><th>Health</th><th>Last run</th><th class="r">Duration</th></tr>{jobs}</table>
+<div class="note">Retries are denied unless a job is declared retryable with an attempt limit. Jobs with no matching item stay unknown.</div></div>
+<div class="panel"><div class="ph"><span class="k">ACCELERATE</span><h2>Real-Time Intelligence</h2><code>accelerate-live</code></div>
+<table><tr><th>Item</th><th>Type</th><th class="r">State</th></tr>{rti}</table>
+<div class="note">Dev workspace. Fabric IQ, ontology and agent templates are capability probes (preview APIs).</div></div>
+</div></div>
+<div class="cols" style="margin-bottom:0"><div class="panel"><div class="ph"><span class="k">ACCELERATE</span><h2>Synthea dataset</h2><code>dataset {esc(acc["dataset"]["datasetHash"])}</code></div>
+<table><tr><th>Table</th><th style="width:36%">Share of rows</th><th class="r">Rows</th></tr>{bars}</table>
+<div class="note">Seeded synthetic patients. Only counts and a hash are reported.</div></div>
+<div class="panel"><div class="ph"><span class="k">ACCELERATE</span><h2>Lakehouse upload</h2><code>Files/synthea</code></div>
+<table><tr><th>File</th><th class="r">Size</th><th>SHA-256</th><th class="r">State</th></tr>{uploads}</table>
+<div class="note">Dev workspace Lakehouse. A rerun leaves identical files untouched.</div></div></div>
+<div class="foot" style="margin-top:12px"><span>Generated from sanitized live reports. Workspace and item identifiers are hashed.</span><span>github.com/samueltauil/fabricops-copilot</span></div>
+</div></body></html>"""
 
 
 def main() -> None:
@@ -181,7 +247,7 @@ def main() -> None:
     Path("artifacts/dashboard.html").write_text(page_html, encoding="utf-8")
     with sync_playwright() as pw:
         browser = pw.chromium.launch(channel="msedge")
-        page = browser.new_page(viewport={"width": 1320, "height": 900}, device_scale_factor=2)
+        page = browser.new_page(viewport={"width": 1440, "height": 900}, device_scale_factor=2)
         page.set_content(page_html)
         page.screenshot(path=str(OUT / "dashboard.png"), full_page=True)
         browser.close()
