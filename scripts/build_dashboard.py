@@ -18,28 +18,38 @@ REPORTS = Path(sys.argv[1] if len(sys.argv) > 1 else "artifacts/real")
 OUT = Path("docs/images")
 
 CSS = """
-*{box-sizing:border-box}body{margin:0;font-family:'Segoe UI',system-ui,sans-serif;color:#e6edf3;
-background:radial-gradient(1200px 600px at 10% -10%,#1b3a6b 0,transparent 60%),
-radial-gradient(900px 500px at 100% 0,#0f5f4f 0,transparent 55%),#0b1220;padding:40px;width:1280px}
-h1{margin:0;font-size:34px;letter-spacing:-.5px}h1 span{color:#4fc3f7}
-.sub{color:#8b98a9;margin:6px 0 28px;font-size:15px}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Segoe UI Variable','Segoe UI',system-ui,sans-serif;color:#1b2430;background:#f3f5f9;width:1320px}
+.hero{background:linear-gradient(120deg,#0b3d3a 0,#0f6e63 45%,#1a8f7a 100%);color:#fff;padding:36px 44px 74px;position:relative}
+.hero h1{margin:0;font-size:36px;font-weight:700;letter-spacing:-.6px}.hero h1 span{font-weight:300;opacity:.85}
+.hero .sub{margin-top:8px;font-size:15px;opacity:.82}
+.live{position:absolute;right:44px;top:40px;background:#ffffff22;border:1px solid #ffffff55;border-radius:99px;padding:6px 14px;font-size:13px;font-weight:600}
+.live:before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#5ef2a0;margin-right:8px;box-shadow:0 0 8px #5ef2a0}
+.wrap{padding:0 44px 36px;margin-top:-52px;position:relative;z-index:3}
+.flow{display:grid;grid-template-columns:repeat(5,1fr);background:#fff;border-radius:14px;box-shadow:0 6px 24px #0b1e3a1f;margin-bottom:22px}
+.step{padding:16px 18px;border-right:1px solid #e6eaf1;position:relative}.step:last-child{border:0}
+.step .n{font-size:11px;letter-spacing:1.2px;color:#6b7a90}
+.step .t{font-size:18px;font-weight:700;margin:3px 0}.step .s{font-size:12.5px;color:#0f7b4b;font-weight:600}
+.step:after{content:"";position:absolute;right:-6px;top:50%;margin-top:-6px;width:10px;height:10px;background:#fff;border-top:2px solid #9aa7ba;border-right:2px solid #9aa7ba;transform:rotate(45deg);z-index:2}.step:last-child:after{display:none}
 .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px}
-.pill{background:#121c30cc;border:1px solid #243452;border-radius:14px;padding:16px}
-.pill .k{font-size:12px;color:#8b98a9;text-transform:uppercase;letter-spacing:1px}
-.pill .v{font-size:30px;font-weight:700;margin-top:6px}.ok{color:#3fb950}.warn{color:#f0b429}.info{color:#4fc3f7}
+.pill{background:#fff;border-radius:12px;padding:16px 18px;border-left:4px solid #0f7b6c;box-shadow:0 1px 3px #0b1e3a14}
+.pill .k{font-size:11.5px;color:#6b7a90;text-transform:uppercase;letter-spacing:1px}
+.pill .v{font-size:32px;font-weight:700;margin-top:4px;color:#0b3d3a}
+.pill .v.ok{color:#0f7b4b}.pill .v.warn{color:#b26a00}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
-.card{background:#121c30cc;border:1px solid #243452;border-radius:16px;padding:20px}
-.card h2{margin:0 0 14px;font-size:16px;display:flex;align-items:center;gap:10px}
-.tag{font-size:11px;padding:3px 9px;border-radius:99px;background:#1f6feb33;color:#79c0ff;border:1px solid #1f6feb66}
-table{width:100%;border-collapse:collapse;font-size:14px}th{color:#8b98a9;text-align:left;font-weight:500;padding:6px 8px;
-border-bottom:1px solid #243452}td{padding:8px;border-bottom:1px solid #1a2740}
+.card{background:#fff;border-radius:14px;padding:22px;box-shadow:0 1px 3px #0b1e3a14}
+.card h2{margin:0 0 14px;font-size:17px;display:flex;align-items:center;gap:10px;color:#0b3d3a}
+.tag{font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;background:#e3f4f0;color:#0f6e63}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{color:#6b7a90;text-align:left;font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;padding:6px 8px;border-bottom:2px solid #e6eaf1}
+td{padding:9px 8px;border-bottom:1px solid #eef1f6}
 .b{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:600}
-.b.ok{background:#23863633;color:#3fb950}.b.warn{background:#9e6a0333;color:#f0b429}.b.info{background:#1f6feb33;color:#79c0ff}
-.env{display:flex;gap:10px;align-items:center;margin-bottom:10px}.dot{width:10px;height:10px;border-radius:50%;background:#3fb950;
-box-shadow:0 0 10px #3fb950}.mono{font-family:Consolas,monospace;color:#8b98a9}
-.bar{height:8px;border-radius:99px;background:#1a2740;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;
-background:linear-gradient(90deg,#4fc3f7,#3fb950)}
-.foot{color:#6b7a90;font-size:12px;margin-top:10px}
+.b.ok{background:#dff5e8;color:#0f7b4b}.b.warn{background:#fff1d6;color:#9a5b00}.b.info{background:#e3f4f0;color:#0f6e63}
+.env{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+.dot{width:10px;height:10px;border-radius:50%;background:#18b26b}.mono{font-family:Consolas,monospace;color:#6b7a90;font-size:12.5px}
+.bar{height:8px;border-radius:99px;background:#e6eaf1;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,#0f7b6c,#18b26b)}
+.foot{color:#6b7a90;font-size:12px;margin-top:12px}
 """
 
 
@@ -126,9 +136,22 @@ def build() -> str:
     counts = acc["dataset"]["tableRowCounts"]
     count_tbl = "".join(f"<tr><td>{k}</td><td>{v:,}</td></tr>" for k, v in counts.items())
 
+    flow = "".join(
+        f'<div class="step"><div class="n">{n}</div><div class="t">{t}</div><div class="s">&#10003; {st}</div></div>'
+        for n, t, st in [
+            ("01", "Provision", f"{len(prov['environments'])} workspaces"),
+            ("02", "Deploy", f"{items} items, idempotent"),
+            ("03", "Operate", f"{health.get('healthy', 0)} healthy job"),
+            ("04", "Govern", f"{gov['driftCount']} drift findings"),
+            ("05", "Accelerate", "RTI + Synthea"),
+        ]
+    )
+
     return f"""<html><head><meta charset="utf-8"><style>{CSS}</style></head><body>
-<h1>FabricOps <span>Copilot</span></h1>
-<div class="sub">Live Microsoft Fabric sandbox &middot; synthetic healthcare (Synthea) &middot; generated {now} from live reports</div>
+<div class="hero"><div class="live">LIVE SANDBOX</div><h1>FabricOps <span>Copilot</span></h1>
+<div class="sub">Governed Microsoft Fabric administration &middot; synthetic healthcare (Synthea) &middot; generated {now} from live reports</div></div>
+<div class="wrap">
+<div class="flow">{flow}</div>
 <div class="grid">{pills}</div>
 <div class="row">
 <div class="card" id="provision"><h2>Provision <span class="tag">landing zone</span></h2>{envs}</div>
@@ -158,11 +181,9 @@ def main() -> None:
     Path("artifacts/dashboard.html").write_text(page_html, encoding="utf-8")
     with sync_playwright() as pw:
         browser = pw.chromium.launch(channel="msedge")
-        page = browser.new_page(viewport={"width": 1360, "height": 900}, device_scale_factor=2)
+        page = browser.new_page(viewport={"width": 1320, "height": 900}, device_scale_factor=2)
         page.set_content(page_html)
         page.screenshot(path=str(OUT / "dashboard.png"), full_page=True)
-        for name in ("provision", "deploy", "operate", "govern", "accelerate"):
-            page.locator(f"#{name}").screenshot(path=str(OUT / f"card-{name}.png"))
         browser.close()
 
 
