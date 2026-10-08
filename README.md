@@ -21,6 +21,26 @@ FabricOps Copilot
 - **Least privilege, customer-owned credentials**: OIDC / `az login`, no secrets in the repo.
 - **Audit without sensitive data**: allowlisted evidence, hashed IDs, row counts only.
 
+## How GitHub Copilot is used
+
+Copilot is a **builder and assistant, not an operator**. It never holds credentials and
+never calls Fabric on its own. The deterministic CLI and the approval-gated GitHub
+workflows do all the changing.
+
+| Phase | Copilot's role | Guardrail |
+|---|---|---|
+| Design | Turned the admin pain points into the five pillars, the config schema and the safety rules. | Reviewed by a human before any code ran. |
+| Build | Generated and iterated the Python engine, live adapters, tests, workflows and these docs, in the terminal with Copilot CLI. | Tests (`pytest`) and `ruff` must pass; idempotency and sanitization are tested. |
+| Fabric knowledge | Uses the [Fabric MCP server](docs/fabric-mcp.md) for REST API specs, item-definition schemas and best practices. | MCP informs code; it is not a production execution path. |
+| Repo guidance | `.github/copilot-instructions.md` and `.github/prompts/` teach Copilot the rules: config over code, plan before apply, no sensitive logging, unknown means blocked. | New item support must update the capability matrix and add rerun tests. |
+| Maintenance | Prompt files for "add support for a Fabric item type" and "diagnose a sanitized run". | Only sanitized evidence is shared with Copilot, never PHI, tokens or definitions. |
+| Review | Copilot code review and PR checks on changes to the engine. | Production workflows need a human reviewer on the `prod` environment. |
+
+Why this split: administration changes must be repeatable and auditable, so they run as
+reviewed code. Copilot's value is making that code, and its extensions to new Fabric
+workloads, much faster to produce. See the [demo runbook](docs/demo-runbook.md) for a
+live Copilot moment.
+
 ## Live demo (real Fabric tenant)
 
 ![FabricOps Copilot live dashboard](docs/images/dashboard.png)
@@ -69,7 +89,7 @@ Synthea needs Java 11+. Never commit tenant, subscription, group or capacity IDs
 
 ## Docs
 
-[Architecture](docs/architecture.md) · [Security model](docs/security-model.md) · [Capability matrix](docs/capability-matrix.md) · [Demo runbook](docs/demo-runbook.md) · [Use-case insights](docs/use-case-insights.md)
+[Demo runbook](docs/demo-runbook.md) (start here) · [Architecture](docs/architecture.md) · [Security model](docs/security-model.md) · [Capability matrix](docs/capability-matrix.md) · [Fabric MCP](docs/fabric-mcp.md) · [Use-case insights](docs/use-case-insights.md)
 
 ## Status
 

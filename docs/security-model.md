@@ -15,13 +15,18 @@ monitoring/governance. Recovery execution requires an additional explicitly appr
 permission set.
 
 `fabricops preflight` checks that tenant, client, capacity mappings, and a supported
-credential signal exist. It never emits configured values. Live mutation stays disabled
-until API-specific identity support and least-privilege permissions are verified in the
-sandbox.
+credential signal exist. It never emits configured values.
 
-The first live adapter is read-only workspace discovery through
-`DefaultAzureCredential`. It emits hashes rather than raw workspace IDs in portable
-reports and sanitizes API failures to status, Fabric error code, and correlation ID.
+Live adapters authenticate through `DefaultAzureCredential` (your `az login` locally,
+OIDC in GitHub Actions). Live mutation is double-locked: the `--apply` (or `--run`) flag
+and `FABRICOPS_ALLOW_LIVE_MUTATION=1`. Reports emit hashes rather than raw workspace IDs,
+and API failures are sanitized to status, Fabric error code, and correlation ID.
+Governance is read-only; unexpected principals are judged against
+`FABRICOPS_GOVERN_ALLOWED_PRINCIPALS`.
+
+Local files that hold real identifiers (`*.local.env`, `.env*`, `artifacts/`,
+`.fabricops/`) are git-ignored. Published screenshots are cropped to exclude URLs, account
+and capacity details.
 
 ### GitHub OIDC prerequisites
 

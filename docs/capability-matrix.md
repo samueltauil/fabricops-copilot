@@ -1,21 +1,28 @@
 # Capability matrix
 
-Last reviewed: 2026-10-07. Revalidate before enabling live mutation.
+Last reviewed: 2026-10-07. Revalidate before relying on any row; Fabric changes quickly.
 
-| Capability | POC path | Live status |
-|---|---|---|
-| Workspace discovery | Live read-only adapter with pagination | Fabric REST API; GitHub OIDC and workspace visibility required |
-| Workspace create | Mock resource handler | Fabric REST API; tenant preflight required; mutation intentionally blocked |
-| Capacity assignment | Mock resource handler | Fabric REST API; capacity and caller permissions required |
-| Workspace roles | Mock resource handler | Fabric REST API; Entra group mappings required |
-| Item promotion | Package resources and plan | `fabric-cicd`/definition API support varies by item type |
-| Job health/history | Normalized mock health report | Job Scheduler API adapter required |
-| Safe recovery | Policy and eligibility report | Mutation remains disabled pending API/job validation |
-| Governance drift | Desired/actual mock comparison | Scanner/activity adapters need admin setup |
-| RTI accelerator | Automated template contract | Validate Eventhouse/Eventstream support and capacity |
-| Fabric IQ | Capability probe | Preview/assisted path may be required |
-| Ontology | Capability probe | Preview/assisted path may be required |
-| Agents | Capability probe | Preview/assisted path may be required |
+Status legend: **Live** = ran against a real Fabric sandbox; **Probe** = reports readiness
+only; **Untested** = code exists, not yet exercised end to end.
+
+| Capability | Implementation | Status | Notes |
+|---|---|---|---|
+| Workspace discovery | `discover`, `live.py` | Live | Paginated read-only listing. |
+| Workspace create | `provision-live` | Live | 3 workspaces; rerun is `no-op`. |
+| Capacity assignment | `provision-live` | Live | Capacity must be running. |
+| Workspace roles | `provision-live` | Live | Groups only; Admin/Contributor/Viewer. |
+| Item deployment | `deploy-live` | Live | Lakehouse, Notebook, DataPipeline in dev, test, prod. Other item types are reported unsupported. |
+| Job health and history | `operate-live` | Live | Job Scheduler API; a pipeline run completed and shows `healthy`. |
+| Safe recovery | `operate-live --retry` | Policy path | Denied unless `retryable: true` with `maxAttempts`. No failure was injected live; covered by tests. |
+| Governance drift | `govern-live` | Live | Capacity, roles, starter items, dev references. Zero findings on a clean run. |
+| Drift injection demo | `--inject-demo-drift` | Untested | Verified only against a test double. |
+| RTI accelerator | `accelerate-live` | Live | Eventhouse, KQL database, Eventstream. |
+| Synthea data load | `accelerate-live` | Live | CSVs uploaded to `Files/synthea`; the notebook has not been run, so no Delta tables yet. |
+| Fabric IQ | Capability probe | Probe | Preview APIs. |
+| Ontology | Capability probe | Probe | Preview APIs. |
+| Agents | Capability probe | Probe | Preview APIs. |
+| Metadata scanner / activity events | Not implemented | n/a | Needs tenant-admin setup; governance uses workspace and item APIs only. |
+| GitHub Actions workflows | `.github/workflows` | Untested | OIDC and environments configured; tenant service-principal setting unconfirmed. |
 
 Official baseline:
 
