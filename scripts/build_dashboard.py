@@ -86,6 +86,36 @@ td.w{white-space:normal}
 .bar{display:block;height:6px;background:var(--bar);opacity:.85}
 td.bw{width:48%;padding-right:14px}
 .note{margin:8px 0 0;color:var(--mute);font-size:12px;line-height:1.5}
+.top{background:#0b1f26;border-bottom:0;color:#cfe3e0}
+.top .name{color:#fff}.top .scope,.top .end{color:#8fb0ad}.livedot{color:#cfe3e0}
+.livedot i{background:#3ddc97}
+.hero{background:radial-gradient(circle at 92% 0%,rgba(61,220,151,.25),rgba(61,220,151,0) 45%),linear-gradient(115deg,#0b1f26 0%,#0f3b3a 55%,#145a49 100%);color:#fff;padding:30px 40px 0;position:relative}
+.hero-top{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:40px;align-items:center;position:relative;z-index:1}
+.hero h1{color:#fff;font-size:34px;margin:0 0 10px}
+.hero .lead{color:#b7d3cf;max-width:700px;font-size:14.5px}
+.ring{position:relative;width:150px;height:150px}
+.ring svg{display:block}
+.ring b{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font:600 30px var(--display);color:#fff}
+.ring b span{font:12px var(--ui);color:#9cc4be;margin-top:2px}
+.tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-top:26px;position:relative;z-index:1;margin-bottom:-60px}
+.tile{background:#fff;color:var(--ink);padding:14px 16px 13px;border-radius:8px;border-top:4px solid var(--c);box-shadow:0 6px 18px rgba(8,30,35,.22)}
+.tile .t{font:600 12px var(--ui);color:var(--c)}
+.tile .n{font:600 30px/1.1 var(--display);margin:5px 0 2px;letter-spacing:-.5px}
+.tile .n small{font-size:15px;color:var(--mute);font-weight:500}
+.tile .d{color:var(--mute);font-size:12px}
+.tile svg{display:block;margin-top:8px}
+.page{padding-top:92px}
+.pcell{display:inline-flex}
+.cell:not(.na){background:#e4f5ee;color:#0b5f4a;padding:2px 9px 2px 7px;border-radius:11px;font-weight:500}
+.cell.change{background:#fdeccf;color:#8a4505}
+.cell.na{background:repeating-linear-gradient(135deg,#f3f5f7 0 6px,#eaedf0 6px 12px);padding:2px 9px;border-radius:11px;color:#8794a0}
+.grid th.env i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;background:var(--ec)}
+.grid tr.g td{color:var(--ink2);border-bottom:1px solid var(--rule2);padding-bottom:5px}
+.panel{background:var(--tint);border-radius:8px;padding:16px 18px}
+.split{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:4px 0 14px;gap:2px}
+.split i{display:block;background:var(--c)}
+.sw{display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--c);margin-right:8px}
+.bar{height:8px;border-radius:4px;background:var(--c);opacity:1}
 .foot{margin-top:34px;padding-top:10px;border-top:1px solid var(--rule);display:flex;justify-content:space-between;color:var(--mute);font-size:12px}
 """
 
@@ -224,6 +254,49 @@ def build(live: bool = False) -> str:
         f"{'No drift was found.' if drift == 0 else f'{drift} drift findings need review.'}"
     )
 
+    def spark(c: str, vals: list[float]) -> str:
+        hi = max(vals) or 1
+        w = 100 / len(vals)
+        bars_ = "".join(
+            f'<rect x="{i * w + 1:.1f}" y="{22 - 20 * v / hi:.1f}" width="{w - 2:.1f}" height="{20 * v / hi:.1f}" rx="1.5" fill="{c}" opacity=".85"/>'
+            for i, v in enumerate(vals)
+        )
+        return f'<svg width="100%" height="22" viewBox="0 0 100 22" preserveAspectRatio="none">{bars_}</svg>'
+
+    def tile(color: str, title: str, big: str, small: str, desc: str, vals: list[float]) -> str:
+        return (
+            f'<div class="tile" style="--c:{color}"><div class="t">{title}</div>'
+            f'<div class="n">{big}<small>{small}</small></div><div class="d">{desc}</div>{spark(color, vals)}</div>'
+        )
+
+    pu, pc = counts["provision"]
+    du, dc = counts["deploy"]
+    tiles = "".join([
+        tile("#0d9f76", "Provision", str(pu), f" of {pu + pc}", "workspace and role resources in place",
+             [len([a for a in e["actions"] if is_unchanged(a["action"])]) for e in prov["environments"]]),
+        tile("#2f6fed", "Deploy", str(du), f" of {du + dc}", "starter items across dev, test, prod",
+             [len(e["actions"]) for e in dep["environments"]]),
+        tile("#e08a0b", "Operate", str(healthy), f" of {len(op['items'])}", "scheduled jobs healthy",
+             [1 if i["health"] == "healthy" else 0.25 for i in op["items"]] or [0]),
+        tile("#7c4dde", "Govern", str(drift), " drift", "findings against the desired state",
+             [e["roleAssignments"]["actual"] for e in gov["environments"]]),
+        tile("#d6336c", "Accelerate", f"{rows_total:,}", " rows", f"Synthea data and {len(acc['realTimeIntelligence'])} real-time items",
+             [v ** 0.4 for v in sorted(acc["dataset"]["tableRowCounts"].values())[::-1]] or [0]),
+    ])
+    frac = (total - changed) / total if total else 1
+    circ = 2 * 3.14159 * 58
+    ring = (
+        '<div class="ring"><svg width="150" height="150" viewBox="0 0 150 150">'
+        '<circle cx="75" cy="75" r="58" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="12"/>'
+        f'<circle cx="75" cy="75" r="58" fill="none" stroke="#3ddc97" stroke-width="12" stroke-linecap="round" '
+        f'stroke-dasharray="{circ * frac:.1f} {circ:.1f}" transform="rotate(-90 75 75)"/></svg>'
+        f'<b>{total - changed}/{total}<span>unchanged</span></b></div>'
+    )
+    hero = (
+        f'<div class="hero"><div class="hero-top"><div><h1>{headline}</h1><p class="lead">{esc(lead)}</p></div>{ring}</div>'
+        f'<div class="tiles">{tiles}</div></div>'
+    )
+
     def cmd_row(cmd: str, result: str) -> str:
         return f'<tr><td class="mono">{cmd}</td><td>{result}</td></tr>'
 
@@ -251,8 +324,9 @@ def build(live: bool = False) -> str:
         s = f"<small>{esc(sub)}</small>" if sub else ""
         return f'<tr data-k="{key}"><td class="k">{esc(label)}{s}</td>' + "".join(f"<td>{c}</td>" for c in cells) + "</tr>"
 
+    ecol = {"dev": "#2f6fed", "test": "#e08a0b", "prod": "#0d9f76"}
     head = "".join(
-        f'<th class="env">{e}<span>{esc(envs[e]["workspaceName"])}</span></th>' for e in ENVS
+        f'<th class="env" style="--ec:{ecol[e]}"><i></i>{e}<span>{esc(envs[e]["workspaceName"])}</span></th>' for e in ENVS
     )
     g = lambda title: f'<tr class="g"><td colspan="4">{title}</td></tr>'  # noqa: E731
     rows = g("Workspace")
@@ -296,10 +370,14 @@ def build(live: bool = False) -> str:
 
     tc = acc["dataset"]["tableRowCounts"]
     top = max(tc.values())
+    pal = ["#d6336c", "#7c4dde", "#2f6fed", "#0d9f76", "#e08a0b", "#14a3b8", "#8a5a44", "#5c6f82"]
+    ordered = sorted(tc.items(), key=lambda kv: -kv[1])
+    col = {k: pal[i % len(pal)] for i, (k, _) in enumerate(ordered)}
+    split = "".join(f'<i style="--c:{col[k]};flex:{v}"></i>' for k, v in ordered)
     bars = "".join(
-        f'<tr data-k="tbl-{esc(k)}"><td>{esc(k)}</td><td class="bw"><span class="bar" style="width:{max(1.0, v * 100 / top):.1f}%"></span></td>'
+        f'<tr data-k="tbl-{esc(k)}"><td><span class="sw" style="--c:{col[k]}"></span>{esc(k)}</td><td class="bw"><span class="bar" style="--c:{col[k]};width:{max(1.0, v * 100 / top):.1f}%"></span></td>'
         f'<td class="r">{v:,}</td></tr>'
-        for k, v in sorted(tc.items(), key=lambda kv: -kv[1])
+        for k, v in ordered
     )
     uploads = "".join(
         f'<tr data-k="up-{esc(r["table"])}"><td class="mono">{esc(r["table"])}.csv</td><td class="r">{r["bytes"] / 1024:,.0f} KB</td>'
@@ -309,10 +387,10 @@ def build(live: bool = False) -> str:
 
     return f"""<html><head><meta charset="utf-8"><style>{CSS}</style></head><body>
 {topbar(live, stamp)}
+{hero}
 <div class="page">
 <div class="layout">
 <div>
-<h1>{headline}</h1><p class="lead" style="margin-bottom:30px">{esc(lead)}</p>
 <section><div class="sechead"><h2>Desired and actual state</h2><code>provision-live, deploy-live, govern-live</code></div>
 <table class="grid"><tr><th>Resource</th>{head}</tr>{rows}</table>
 <p class="note">Production waits for a reviewer before any change is applied. Remediation is report only, and the owner principal is allow-listed.</p></section>
@@ -324,6 +402,7 @@ def build(live: bool = False) -> str:
 <table><tr><th>Job</th><th>Health</th><th class="r">Last run</th></tr>{jobs}</table>
 <p class="note">Retries are denied unless a job is declared retryable with an attempt limit. A job with no matching item stays unknown.</p></section>
 <section><div class="sechead"><h2>Synthea rows by table</h2><code>{rows_total:,} total</code></div>
+<div class="split">{split}</div>
 <table>{bars}</table>
 <p class="note">Seeded synthetic patients. Only counts and the dataset hash {esc(acc["dataset"]["datasetHash"])} leave the sandbox.</p></section>
 <section><div class="sechead"><h2>Files in the dev Lakehouse</h2><code>Files/synthea</code></div>
